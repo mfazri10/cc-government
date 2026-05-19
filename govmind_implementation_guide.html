@@ -1,0 +1,79 @@
+<h2 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Panduan implementasi 4 fitur GOVMIND untuk hackathon — data, stack, dan langkah teknis</h2>
+<div style="padding:1rem 0">
+<div style="font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Implementation guide — hackathon scope</div>
+<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:14px">4 fitur dari pilihanmu yang realistis untuk hackathon. Klik nama fitur untuk melihat detail implementasi.</div>
+<div id="gt" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem"></div>
+<div id="gc" style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px"></div>
+<div style="border-top:0.5px solid var(--color-border-tertiary);margin:1.5rem 0"></div>
+<div style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Sisa 7 fitur — jadwalkan setelah hackathon</div>
+<div id="gp" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div>
+</div>
+<script>
+const DOM={plan:{bg:'#EEEDFE',text:'#3C3489',name:'Perencanaan'},warga:{bg:'#E6F1FB',text:'#0C447C',name:'Warga'},kes:{bg:'#E1F5EE',text:'#085041',name:'Kesehatan'},infra:{bg:'#FAEEDA',text:'#633806',name:'Infrastruktur'},fin:{bg:'#EAF3DE',text:'#27500A',name:'Keuangan'},reg:{bg:'#FAECE7',text:'#712B13',name:'Regulasi'}};
+const F=[
+  {name:'SAKIP Evaluator',domain:'plan',q:'Q1',days:'3–4 hari',tagline:'Evaluasi otomatis LAKIP vs Renstra, prediksi skor, gap analysis per indikator kinerja',
+   data:['LAKIP PDF','Renstra PDF','LKjIP','RKA'],
+   stack:['Gemini 1.5 Pro','LangChain','ChromaDB','PyMuPDF'],
+   steps:['Ingesti PDF → ekstrak teks per halaman menggunakan PyMuPDF','Chunking per bab/indikator → embed dengan Gemini text-embedding-004','Index ke ChromaDB dengan metadata: OPD, tahun, jenis dokumen','Buat evaluation prompt yang membandingkan target Renstra vs realisasi LAKIP tiap indikator','Output formatter: tabel gap analysis + skor prediksi + narasi rekomendasi per indikator'],
+   demo:'Stunting Dinkes Cimahi: target 14%, realisasi 18.3% → TIDAK TERCAPAI (gap +4.3pp). Indikator risiko tinggi: 3 dari 7. Rekomendasi: intensifkan intervensi gizi di Kel. Cibabat, Cigugur, Setiamanah.'},
+  {name:'Regulasi RAG Engine',domain:'reg',q:'Q1',days:'2–3 hari',tagline:'Query bahasa natural ke seluruh Perda, SK, Perwali Cimahi — jawaban dengan kutipan pasal lengkap',
+   data:['Perda Cimahi PDF','SK Walikota','Perwali','JDIH Cimahi'],
+   stack:['Gemini Embedding API','ChromaDB','LangChain','FastAPI'],
+   steps:['Download PDF dari JDIH Cimahi (jdih.cimahikota.go.id) secara manual atau scraping','Chunk per pasal menggunakan regex split pada pola "Pasal [0-9]+"','Embed tiap chunk, simpan di ChromaDB dengan metadata: no. perda, tahun, nomor pasal','NL query → semantic search → retrieve top-5 chunks paling relevan','Gemini generate jawaban: kutipan pasal + penjelasan konteks + referensi lengkap'],
+   demo:'Tanya: Dasar hukum pengelolaan PKL di Cimahi?\nJawab: Berdasarkan Perda No. 3/2018 tentang Penataan PKL, Pasal 8 Ayat 2, Pemerintah Kota wajib menyediakan lokasi binaan PKL di zona perdagangan yang telah ditetapkan dalam RDTR.'},
+  {name:'Pengaduan Intelligence',domain:'warga',q:'Q1',days:'2–3 hari',tagline:'Agregasi, klasifikasi otomatis, dan routing laporan warga ke OPD yang tepat dengan prioritas urgensi',
+   data:['SP4N-LAPOR export CSV','Data WA pengaduan Cimahi','Laporan warga format CSV'],
+   stack:['Gemini Flash','Pandas','FastAPI','Chart.js'],
+   steps:['Ingesti CSV/JSON pengaduan dengan kolom: tanggal, teks laporan, kelurahan pelapor','Klasifikasi tiap laporan: topik (infrastruktur/kesehatan/sampah), urgensi (H/M/L), OPD tujuan','Clustering pengaduan serupa menggunakan cosine similarity antar embeddings','Hotspot detection: kelurahan dengan frekuensi tinggi pada topik yang sama','Output: ringkasan bulanan + routing list per OPD + alert hotspot untuk eskalasi'],
+   demo:'300 pengaduan November 2024: 45% infrastruktur jalan, 23% sampah, 15% air bersih.\nHOTSPOT: Kel. Melong (47 laporan banjir berulang) → eskalasi DPUPR urgent.\nRouting: 89 tiket → DPUPR, 68 → DLHK, 45 → PDAM Tirta Raharja.'},
+  {name:'Sentimen Warga (Lite)',domain:'warga',q:'Q4 → Lite',days:'2–3 hari',tagline:'Versi terbatas: analisis sentimen dari Google Reviews dan survei warga yang sudah dikumpulkan manual',
+   data:['Google Reviews puskesmas & dinas','Google Form survei warga','Komentar medsos (CSV manual)'],
+   stack:['Gemini Flash','Sentiment prompts','Pandas','Chart.js'],
+   steps:['Kumpulkan Google Reviews puskesmas dan kantor dinas Cimahi secara manual ke CSV','Tambahkan sample komentar medsos (50–100 post) sebagai data pelengkap','Batch sentiment analysis: positif/negatif/netral + ekstraksi topik per ulasan dengan Gemini Flash','Trend comparison: bandingkan rata-rata skor sentimen bulan ini vs bulan sebelumnya','Output: laporan tren per layanan + top issues berulang + rekomendasi prioritas tindak lanjut'],
+   demo:'Sentimen RSUD Cimahi: turun 28% (3.8 → 2.7 dari 5) dalam 30 hari terakhir.\nIsu dominan: antrian pendaftaran (34 mention), keramahan staf (21 mention).\nRekomendasi: evaluasi sistem antrian online, pelatihan frontliner Q1 2025.'}
+];
+const PH=[
+  {label:'Phase 2 — 1 sampai 3 bulan',bc:'var(--color-border-info)',bg:'var(--color-background-info)',tc:'var(--color-text-info)',features:['Efisiensi Belanja Optimizer','Program Sosial Analyzer','Konflik Regulasi Detector','Cross-OPD Alignment']},
+  {label:'Phase 3 — 6 sampai 12 bulan',bc:'var(--color-border-secondary)',bg:'var(--color-background-secondary)',tc:'var(--color-text-secondary)',features:['Peta Aspirasi Warga','Maintenance Predictor','Tata Ruang Compliance']}
+];
+let act=0;
+function bdg(t,bg,c){return `<span style="display:inline-block;font-size:11px;background:${bg};color:${c};padding:3px 9px;border-radius:100px;margin-bottom:3px">${t}</span>`;}
+function renderTabs(){
+  document.getElementById('gt').innerHTML=F.map((f,i)=>{
+    const a=i===act;const d=DOM[f.domain];
+    return `<button onclick="setTab(${i})" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:100px;border:0.5px solid ${a?d.text:'var(--color-border-tertiary)'};background:${a?d.bg:'transparent'};color:${a?d.text:'var(--color-text-secondary)'};font-size:12px;font-weight:${a?'500':'400'};cursor:pointer">${a?'<i class="ti ti-check" style="font-size:10px" aria-hidden="true"></i>':''}<span>${f.name}</span></button>`;
+  }).join('');
+}
+function renderContent(){
+  const f=F[act];const d=DOM[f.domain];
+  document.getElementById('gc').innerHTML=`
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px">
+      <span style="font-size:15px;font-weight:500;color:var(--color-text-primary)">${f.name}</span>
+      ${bdg(d.name,d.bg,d.text)}${bdg(f.q,'var(--color-background-secondary)','var(--color-text-secondary)')}${bdg(f.days,'var(--color-background-secondary)','var(--color-text-secondary)')}
+    </div>
+    <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px;font-style:italic">${f.tagline}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px;display:flex;align-items:center;gap:5px"><i class="ti ti-database" style="font-size:13px;color:${d.text}" aria-hidden="true"></i> Data yang dibutuhkan</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">${f.data.map(x=>bdg(x,d.bg,d.text)).join('')}</div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:7px;display:flex;align-items:center;gap:5px"><i class="ti ti-code" style="font-size:13px;color:${d.text}" aria-hidden="true"></i> Tech stack</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">${f.stack.map(x=>bdg(x,'var(--color-background-secondary)','var(--color-text-secondary)')).join('')}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;display:flex;align-items:center;gap:5px"><i class="ti ti-list-numbers" style="font-size:13px;color:${d.text}" aria-hidden="true"></i> Langkah implementasi</div>
+        <div style="margin-bottom:14px">${f.steps.map((s,i)=>`<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px"><span style="font-size:11px;font-weight:500;background:${d.bg};color:${d.text};padding:1px 7px;border-radius:100px;flex-shrink:0">${i+1}</span><span style="font-size:12px;color:var(--color-text-secondary);line-height:1.6">${s}</span></div>`).join('')}</div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px;display:flex;align-items:center;gap:5px"><i class="ti ti-eye" style="font-size:13px;color:${d.text}" aria-hidden="true"></i> Contoh output demo</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;line-height:1.7;border-left:3px solid ${d.text}">${f.demo.replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`;
+}
+function renderPhases(){
+  document.getElementById('gp').innerHTML=PH.map(p=>`
+    <div style="border:0.5px solid ${p.bc};border-radius:var(--border-radius-lg);padding:12px;background:${p.bg}">
+      <div style="font-size:12px;font-weight:500;color:${p.tc};margin-bottom:8px">${p.label}</div>
+      ${p.features.map(f=>`<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><i class="ti ti-chevron-right" style="font-size:11px;color:${p.tc};flex-shrink:0" aria-hidden="true"></i><span style="font-size:12px;color:var(--color-text-secondary)">${f}</span></div>`).join('')}
+    </div>`).join('');
+}
+function setTab(i){act=i;renderTabs();renderContent();}
+renderTabs();renderContent();renderPhases();
+</script>
