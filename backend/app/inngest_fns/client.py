@@ -16,4 +16,5 @@ settings = get_settings()
 inngest_client = inngest.Inngest(
     app_id="govmind-sentimen-warga",
     event_key=settings.INNGEST_EVENT_KEY,
+    is_production=settings.APP_ENV == "production",
 )

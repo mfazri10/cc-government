@@ -7,7 +7,10 @@ import asyncio
 
 from sqlalchemy import select
 from app.core.database import async_session_factory, engine
-from app.core.models import Base, Source, TargetEntity
+from app.core.models import Base, Source, TargetEntity, SystemSetting
+from app.core.config import get_settings
+
+settings = get_settings()
 
 
 INITIAL_SOURCES = [
@@ -87,6 +90,18 @@ async def seed():
             if not existing.scalar_one_or_none():
                 db.add(TargetEntity(**entity_data))
                 print(f"  ✅ Entity: {entity_data['name']}")
+
+        # Seed System Settings
+        existing_setting = await db.execute(
+            select(SystemSetting).where(SystemSetting.key == "GEMINI_API_KEY")
+        )
+        if not existing_setting.scalar_one_or_none():
+            db.add(SystemSetting(
+                key="GEMINI_API_KEY",
+                value=settings.GEMINI_API_KEY,
+                description="Google Gemini API Key untuk analisis sentimen & masukan warga."
+            ))
+            print("  ✅ Setting: GEMINI_API_KEY")
 
         await db.commit()
         print("\n🎉 Seeding selesai!")

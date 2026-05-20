@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.core.models import Base
 import app.core.auth_models  # noqa: F401 — import agar Alembic mendeteksi tabel RBAC
+import app.core.scraper_models  # noqa: F401 — import agar Alembic mendeteksi tabel scrape_jobs
+import app.core.crawl_models  # noqa: F401 — import agar Alembic mendeteksi tabel crawl_jobs
 
 # Alembic Config object
 config = context.config

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.core.auth_models import Menu, Permission, Role, User
 from app.core.database import async_session_factory, engine
 from app.core.models import Base
+from app.core.security import hash_password
 
 
 # ── Data Awal ──────────────────────────────────────────────────
@@ -189,17 +190,22 @@ async def seed_rbac():
             )
             role = existing.scalar_one_or_none()
             if not role:
-                role = Role(name=role_data["name"], label=role_data["label"])
-                db.add(role)
-                await db.flush()
-
-                # Assign permissions
+                # Assign permissions in constructor
+                role_permissions = []
                 if role_data["permissions"] == "*":
-                    role.permissions = list(perm_map.values())
+                    role_permissions = list(perm_map.values())
                 else:
-                    role.permissions = [
+                    role_permissions = [
                         perm_map[p] for p in role_data["permissions"] if p in perm_map
                     ]
+
+                role = Role(
+                    name=role_data["name"],
+                    label=role_data["label"],
+                    permissions=role_permissions
+                )
+                db.add(role)
+                await db.flush()
 
                 print(f"  ✅ Role: {role_data['name']} ({len(role.permissions)} permissions)")
             role_map[role_data["name"]] = role
@@ -209,13 +215,20 @@ async def seed_rbac():
         existing_user = await db.execute(
             select(User).where(User.email == ADMIN_USER["email"])
         )
-        if not existing_user.scalar_one_or_none():
-            admin = User(**ADMIN_USER)
+        user_record = existing_user.scalar_one_or_none()
+        hashed_pwd = hash_password(ADMIN_USER["password"])
+        if not user_record:
+            admin = User(
+                name=ADMIN_USER["name"],
+                email=ADMIN_USER["email"],
+                password=hashed_pwd,
+            )
             admin.roles = [role_map["super_admin"]]
             db.add(admin)
-            print(f"  ✅ User: {ADMIN_USER['email']} (role: super_admin)")
+            print(f"  ✅ User: {ADMIN_USER['email']} (role: super_admin) - password hashed with bcrypt")
         else:
-            print(f"  ⏭️ User {ADMIN_USER['email']} sudah ada, skip.")
+            user_record.password = hashed_pwd
+            print(f"  ✅ User: {ADMIN_USER['email']} password updated to hashed (bcrypt)")
 
         await db.commit()
         print("\n🎉 RBAC seeding selesai!")

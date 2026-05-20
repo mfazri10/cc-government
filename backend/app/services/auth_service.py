@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.auth_models import Menu, Permission, Role, User, permission_role, role_user
-from app.core.exceptions import DuplicateEntryException, NotFoundException
+from app.core.exceptions import DuplicateEntryException, NotFoundException, ValidationException
+from app.core.security import hash_password, verify_password
 from app.schemas.auth import (
     MenuCreate,
     MenuUpdate,
@@ -27,6 +28,23 @@ class AuthService:
 
     # ── Users ──────────────────────────────────────────────────
 
+    async def authenticate_user(self, db: AsyncSession, email: str, plain_password: str) -> User:
+        """Verifikasi credentials email & password. Return User jika valid, raise exception jika tidak."""
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.roles).selectinload(Role.permissions))
+            .where(User.email == email)
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise ValidationException("Email atau password tidak terdaftar.")
+
+        if not verify_password(plain_password, user.password):
+            raise ValidationException("Email atau password tidak sesuai.")
+
+        return user
+
+
     async def create_user(self, db: AsyncSession, data: UserCreate) -> User:
         """Buat user baru dan assign roles."""
         # Check duplicate email
@@ -39,7 +57,7 @@ class AuthService:
         user = User(
             name=data.name,
             email=data.email,
-            password=data.password,  # TODO: Hash password sebelum simpan
+            password=hash_password(data.password),
         )
 
         # Assign roles
@@ -75,6 +93,8 @@ class AuthService:
         user = await self.get_user_by_id(db, user_id)
         update_data = data.model_dump(exclude_unset=True, exclude={"role_ids"})
         for key, value in update_data.items():
+            if key == "password" and value is not None:
+                value = hash_password(value)
             setattr(user, key, value)
 
         # Update roles if provided

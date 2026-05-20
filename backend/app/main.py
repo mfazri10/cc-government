@@ -20,8 +20,20 @@ from app.core.exceptions import (
     ValidationException,
 )
 
-# Import routers
-from app.api.routers import feedback_router, target_entity_router, analytics_router, auth_router
+from app.api.routers import (
+    feedback_router,
+    target_entity_router,
+    analytics_router,
+    auth_router,
+    setting_router,
+    scraper_router,
+    crawler_router,
+)
+import inngest.fast_api
+from app.inngest_fns.client import inngest_client
+from app.inngest_fns.sentiment_functions import all_functions as sentiment_fns
+from app.inngest_fns.scraping_functions import scraping_functions as scraping_fns
+from app.inngest_fns.crawl_functions import crawl_functions as crawl_fns
 
 settings = get_settings()
 
@@ -32,10 +44,10 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    print("🚀 GOVMIND Sentimen Warga API starting...")
+    print("GOVMIND Sentimen Warga API starting...")
     yield
     # Shutdown
-    print("🛑 GOVMIND Sentimen Warga API shutting down...")
+    print("GOVMIND Sentimen Warga API shutting down...")
 
 
 # ── App Instance ───────────────────────────────────────────────
@@ -110,6 +122,17 @@ app.include_router(feedback_router.router, prefix=API_V1_PREFIX)
 app.include_router(target_entity_router.router, prefix=API_V1_PREFIX)
 app.include_router(analytics_router.router, prefix=API_V1_PREFIX)
 app.include_router(auth_router.router, prefix=API_V1_PREFIX)
+app.include_router(setting_router.router, prefix=API_V1_PREFIX)
+app.include_router(scraper_router.router, prefix=API_V1_PREFIX)
+app.include_router(crawler_router.router, prefix=API_V1_PREFIX)
+
+# ── Mount Inngest Serve ───────────────────────────────────────
+
+inngest.fast_api.serve(
+    app,
+    inngest_client,
+    [*sentiment_fns, *scraping_fns, *crawl_fns],
+)
 
 
 # ── Health Check ───────────────────────────────────────────────

@@ -21,10 +21,29 @@ from app.schemas.auth import (
     UserResponse,
     UserUpdate,
     UserWithPermissions,
+    LoginRequest,
+    LoginResponse,
 )
 from app.services.auth_service import auth_service
 
 router = APIRouter(tags=["Auth & RBAC"])
+
+
+# ── Authentication ─────────────────────────────────────────────
+
+@router.post("/login", response_model=LoginResponse)
+async def login(
+    req: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Login user dan kembalikan detail data user beserta dummy token untuk sesi."""
+    user = await auth_service.authenticate_user(db, req.email, req.password)
+    token = f"demo-session-token-{user.id}-{user.email}"
+    return LoginResponse(
+        user=user,
+        token=token,
+        message="Login berhasil."
+    )
 
 
 # ── Users ──────────────────────────────────────────────────────

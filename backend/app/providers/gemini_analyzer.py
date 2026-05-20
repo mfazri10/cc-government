@@ -52,8 +52,38 @@ class GeminiSentimentAnalyzer(BaseSentimentAnalyzer):
             ),
         )
 
-    async def analyze(self, text: str) -> dict:
+    async def _configure_dynamic_key(self):
+        """Konfigurasi API key dinamis dari database dengan fallback ke .env."""
+        try:
+            from app.core.database import async_session_factory
+            from app.core.models import SystemSetting
+            from sqlalchemy import select
+
+            async with async_session_factory() as db:
+                result = await db.execute(
+                    select(SystemSetting).where(SystemSetting.key == "GEMINI_API_KEY")
+                )
+                setting = result.scalar_one_or_none()
+                api_key = setting.value.strip() if (setting and setting.value.strip()) else settings.GEMINI_API_KEY
+                
+                if api_key:
+                    genai.configure(api_key=api_key)
+                    self.model = genai.GenerativeModel(
+                        model_name="gemini-2.0-flash",
+                        system_instruction=SYSTEM_PROMPT,
+                        generation_config=genai.GenerationConfig(
+                            temperature=0.1,
+                            response_mime_type="application/json",
+                        ),
+                    )
+        except Exception:
+            # Fallback jika database belum siap/error
+            pass
+
+    async def analyze(self, text: str, configure_key: bool = True) -> dict:
         """Analisis satu teks ulasan."""
+        if configure_key:
+            await self._configure_dynamic_key()
         try:
             response = await self.model.generate_content_async(
                 f"Analisis ulasan berikut:\n\n\"{text}\""
@@ -67,10 +97,11 @@ class GeminiSentimentAnalyzer(BaseSentimentAnalyzer):
 
     async def batch_analyze(self, texts: list[str]) -> list[dict]:
         """Batch analisis — proses satu per satu untuk kontrol error yang lebih baik."""
+        await self._configure_dynamic_key()
         results = []
         for text in texts:
             try:
-                result = await self.analyze(text)
+                result = await self.analyze(text, configure_key=False)
                 results.append(result)
             except GeminiServiceException:
                 # Jika satu gagal, masukkan fallback agar batch tidak berhenti total

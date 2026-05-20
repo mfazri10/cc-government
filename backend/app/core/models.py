@@ -65,6 +65,28 @@ class TargetEntity(Base):
         return f"<TargetEntity(id={self.id}, name='{self.name}')>"
 
 
+class DataSource(Base):
+    """Sumber data scraping kustom yang dikonfigurasi untuk target entity tertentu."""
+
+    __tablename__ = "data_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_id: Mapped[int] = mapped_column(Integer, ForeignKey("sources.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    target_entity_id: Mapped[int] = mapped_column(Integer, ForeignKey("target_entities.id"), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="active")  # 'active', 'error', 'inactive'
+    last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    source: Mapped["Source"] = relationship()
+    target_entity: Mapped["TargetEntity"] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<DataSource(id={self.id}, name='{self.name}', status='{self.status}')>"
+
+
 class RawFeedback(Base):
     """
     Data mentah hasil scraping.
@@ -160,3 +182,23 @@ class AlertLog(Base):
 
     def __repr__(self) -> str:
         return f"<AlertLog(id={self.id}, status='{self.status}')>"
+
+
+class SystemSetting(Base):
+    """
+    Tabel system_settings untuk menyimpan konfigurasi yang dapat diubah oleh admin di runtime.
+    """
+
+    __tablename__ = "system_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<SystemSetting(key='{self.key}', value='{self.value}')>"
+

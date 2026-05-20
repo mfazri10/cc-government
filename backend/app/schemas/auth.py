@@ -120,3 +120,15 @@ class UserResponse(UserBase):
 class UserWithPermissions(UserResponse):
     """User + all flattened permissions (untuk token / middleware)."""
     all_permissions: list[str] = []
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+    password: str = Field(...)
+
+
+class LoginResponse(BaseModel):
+    user: UserResponse
+    token: str
+    message: str
+

@@ -1,0 +1,384 @@
+# Implementasi Fitur Crawl Engine — Sitemap & Recursive Crawler
+
+## Tujuan
+Mengimplementasikan modul **D. Crawl: Sitemap Mapping & Recursive Crawler** dari [scraping-engine-features.md](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/scraping-engine-features.md) secara lengkap dan premium. Fitur ini memungkinkan pengguna memetakan `sitemap.xml` dan merayap situs OPD secara periodik/rekursif dengan jeda (rate-limiting), anti-blocking, dan visualisasi progres di dashboard secara real-time.
+
+---
+
+## Proposed Architecture & Workflow
+
+Fitur crawler ini akan dibangun berbasis **Event-Driven Workflow** menggunakan Inngest agar proses perayapan berdurasi panjang dapat berjalan dengan andal di latar belakang (background), tahan terhadap crash/restarter, dan memiliki checkpoint per halaman.
+
+```mermaid
+sequenceDiagram
+    participant User as Admin UI
+    participant API as FastAPI Router
+    participant Service as Crawler Service
+    participant Inngest as Inngest Engine
+    participant DB as PostgreSQL (DB)
+
+    User->>API: POST /api/v1/crawler/crawl (URL, depth, path_filter, limit)
+    API->>Service: create_crawl_job()
+    Service->>DB: Simpan status CrawlJob 'PENDING'
+    Service->>Inngest: Emit event 'crawler/crawl.requested'
+    API->>User: Return CrawlJob metadata (201 Created)
+    
+    Note over Inngest, DB: Background Processing
+    Inngest->>Inngest: Run process_crawl_job
+    Inngest->>Service: execute_sitemap_mapping()
+    Service-->>Inngest: Discover URLs
+    Inngest->>DB: Update pages_discovered
+    
+    loop Per Halaman (Iteratif / Rekursif)
+        Inngest->>Service: fetch & scrape URL
+        Service->>DB: Simpan ke crawled_pages & update pages_crawled
+        Inngest->>Inngest: Rate-limiting delay (politeness)
+    end
+    Inngest->>DB: Mark CrawlJob 'COMPLETED'
+```
+
+---
+
+## Proposed Changes
+
+### 1. Database & ORM Model (Backend Core)
+
+#### [NEW] [crawl_models.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/core/crawl_models.py)
+Membuat ORM model baru untuk melacak pekerjaan crawling dan halaman yang berhasil dirayap.
+```python
+import uuid
+from datetime import datetime
+from sqlalchemy import DateTime, Integer, String, Text, ForeignKey, func, JSON
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.models import Base
+
+class CrawlJob(Base):
+    __tablename__ = "crawl_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING, PROCESSING, COMPLETED, FAILED
+    max_depth: Mapped[int] = mapped_column(Integer, default=2)
+    path_filter: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    limit_pages: Mapped[int] = mapped_column(Integer, default=50)
+    delay_seconds: Mapped[float] = mapped_column(Integer, default=1)
+    
+    pages_discovered: Mapped[int] = mapped_column(Integer, default=0)
+    pages_crawled: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    pages: Mapped[list["CrawledPage"]] = relationship(back_populates="job", cascade="all, delete-orphan")
+
+class CrawledPage(Base):
+    __tablename__ = "crawled_pages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crawl_job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crawl_jobs.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    crawled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    job: Mapped["CrawlJob"] = relationship(back_populates="pages")
+```
+
+#### [MODIFY] [env.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/alembic/env.py)
+Mengimpor model baru `crawl_models.py` agar terdeteksi oleh autogenerate Alembic.
+
+---
+
+### 2. Service & Router Layer (Backend)
+
+#### [NEW] [crawl_schemas.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/schemas/crawl.py)
+Pydantic schemas untuk request & response crawling.
+```python
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, HttpUrl
+
+class CrawlRequest(BaseModel):
+    url: str
+    max_depth: int = 2
+    path_filter: str | None = None
+    limit_pages: int = 50
+    delay_seconds: int = 1
+
+class CrawlJobResponse(BaseModel):
+    id: UUID
+    url: str
+    status: str
+    max_depth: int
+    path_filter: str | None
+    limit_pages: int
+    pages_discovered: int
+    pages_crawled: int
+    error_message: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+    model_config = {"from_attributes": True}
+
+class PaginatedCrawlJobs(BaseModel):
+    data: list[CrawlJobResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+```
+
+#### [NEW] [crawl_service.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/services/crawl_service.py)
+Logika bisnis utama crawling: parsing `sitemap.xml`, ekstraksi URL, recursive crawling dengan filter, rate limit, dan rotasi User-Agent.
+```python
+import re
+import asyncio
+from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
+import httpx
+from sqlalchemy import select, func, desc
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.crawl_models import CrawlJob, CrawledPage
+from app.core.exceptions import NotFoundException
+from app.providers.html_extractor import HttpxHtmlExtractor
+from app.schemas.crawl import CrawlRequest
+
+class CrawlService:
+    def __init__(self):
+        self.extractor = HttpxHtmlExtractor()
+
+    async def create_job(self, db: AsyncSession, request: CrawlRequest) -> CrawlJob:
+        job = CrawlJob(
+            url=str(request.url),
+            max_depth=request.max_depth,
+            path_filter=request.path_filter,
+            limit_pages=request.limit_pages,
+            delay_seconds=request.delay_seconds
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return job
+
+    async def get_job(self, db: AsyncSession, job_id) -> CrawlJob:
+        result = await db.execute(select(CrawlJob).where(CrawlJob.id == job_id))
+        job = result.scalar_one_or_none()
+        if not job:
+            raise NotFoundException("CrawlJob", str(job_id))
+        return job
+
+    async def list_jobs(self, db: AsyncSession, page: int = 1, page_size: int = 10):
+        count_res = await db.execute(select(func.count()).select_from(CrawlJob))
+        total = count_res.scalar() or 0
+        offset = (page - 1) * page_size
+        result = await db.execute(
+            select(CrawlJob).order_by(desc(CrawlJob.created_at)).offset(offset).limit(page_size)
+        )
+        return {
+            "data": result.scalars().all(),
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": max(1, (total + page_size - 1) // page_size),
+        }
+
+    async def discover_urls_from_sitemap(self, url: str) -> list[str]:
+        """Coba parse sitemap.xml dari domain utama jika ada."""
+        parsed = urlparse(url)
+        sitemap_url = f"{parsed.scheme}://{parsed.netloc}/sitemap.xml"
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                resp = await client.get(sitemap_url)
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, "xml")
+                    urls = [loc.text.strip() for loc in soup.find_all("loc")]
+                    if urls:
+                        return urls
+        except Exception:
+            pass
+        return []
+```
+
+#### [NEW] [crawler_router.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/api/routers/crawler_router.py)
+Router API untuk submit crawl, list jobs, dan detail job.
+```python
+from uuid import UUID
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.database import get_db
+from app.schemas.crawl import CrawlRequest, CrawlJobResponse, PaginatedCrawlJobs
+from app.services.crawl_service import crawl_service
+from app.inngest_fns.client import inngest_client
+import inngest
+
+router = APIRouter(prefix="/crawler", tags=["Crawler"])
+
+@router.post("/crawl", response_model=CrawlJobResponse, status_code=201)
+async def start_crawl_job(request: CrawlRequest, db: AsyncSession = Depends(get_db)):
+    job = await crawl_service.create_job(db, request)
+    # Emit event to Inngest for background crawling
+    await inngest_client.send(
+        inngest.Event(name="crawler/crawl.requested", data={"job_id": str(job.id)})
+    )
+    return job
+
+@router.get("/jobs", response_model=PaginatedCrawlJobs)
+async def list_crawl_jobs(page: int = 1, page_size: int = 10, db: AsyncSession = Depends(get_db)):
+    return await crawl_service.list_jobs(db, page, page_size)
+
+@router.get("/jobs/{job_id}", response_model=CrawlJobResponse)
+async def get_crawl_job(job_id: UUID, db: AsyncSession = Depends(get_db)):
+    return await crawl_service.get_job(db, job_id)
+```
+
+#### [MODIFY] [main.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/main.py)
+Registrasi router `/crawler` baru dan daftarkan Inngest serve middleware dengan endpoint `/api/inngest`.
+
+---
+
+### 3. Background Workers (Inngest)
+
+#### [NEW] [crawl_functions.py](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/backend/app/inngest_fns/crawl_functions.py)
+Inngest background job untuk perayapan andal, toleran kegagalan, dan mematuhi politeness mode.
+```python
+import inngest
+import asyncio
+from uuid import UUID
+from urllib.parse import urljoin, urlparse
+from app.inngest_fns.client import inngest_client
+from app.core.database import async_session_factory
+from app.services.crawl_service import crawl_service
+from app.core.crawl_models import CrawlJob, CrawledPage
+from app.providers.html_extractor import HttpxHtmlExtractor
+from sqlalchemy import select
+
+@inngest_client.create_function(
+    fn_id="execute-crawl-job",
+    trigger=inngest.TriggerEvent(event="crawler/crawl.requested"),
+    retries=1,
+)
+async def execute_crawl_job(ctx: inngest.Context, step: inngest.Step):
+    job_id = UUID(ctx.event.data["job_id"])
+
+    # 1. Fetch Job Config
+    async def fetch_job():
+        async with async_session_factory() as db:
+            job = await crawl_service.get_job(db, job_id)
+            return {
+                "url": job.url,
+                "max_depth": job.max_depth,
+                "path_filter": job.path_filter,
+                "limit_pages": job.limit_pages,
+                "delay_seconds": job.delay_seconds
+            }
+            
+    config = await step.run("fetch-config", fetch_job)
+
+    # 2. Discover URLs (Sitemap + Root)
+    async def discover_urls():
+        urls = await crawl_service.discover_urls_from_sitemap(config["url"])
+        if not urls:
+            urls = [config["url"]]
+        return urls[:config["limit_pages"]]
+
+    discovered = await step.run("discover-initial-urls", discover_urls)
+
+    async def update_discovered_count():
+        async with async_session_factory() as db:
+            job = await crawl_service.get_job(db, job_id)
+            job.status = "PROCESSING"
+            job.pages_discovered = len(discovered)
+            await db.commit()
+            
+    await step.run("update-discovered", update_discovered_count)
+
+    # 3. Scrape Queue
+    crawled_count = 0
+    extractor = HttpxHtmlExtractor()
+
+    for target_url in discovered:
+        # Check path filter
+        if config["path_filter"]:
+            if not re.search(config["path_filter"], target_url):
+                continue
+
+        async def crawl_page():
+            try:
+                html = await extractor.fetch_html(target_url)
+                md_content = extractor.to_markdown(html)
+                meta = extractor.extract_metadata(html, target_url)
+                
+                async with async_session_factory() as db:
+                    page = CrawledPage(
+                        crawl_job_id=job_id,
+                        url=target_url,
+                        title=meta.get("title", "No Title"),
+                        markdown=md_content,
+                        status_code=200
+                    )
+                    db.add(page)
+                    
+                    job = await crawl_service.get_job(db, job_id)
+                    job.pages_crawled += 1
+                    await db.commit()
+                return True
+            except Exception:
+                return False
+
+        success = await step.run(f"crawl-{target_url[:50]}", crawl_page)
+        if success:
+            crawled_count += 1
+
+        if crawled_count >= config["limit_pages"]:
+            break
+
+        # Politeness Delay
+        await asyncio.sleep(config["delay_seconds"])
+
+    async def mark_completed():
+        async with async_session_factory() as db:
+            job = await crawl_service.get_job(db, job_id)
+            job.status = "COMPLETED"
+            job.completed_at = datetime.now()
+            await db.commit()
+
+    await step.run("mark-completed", mark_completed)
+    return {"pages_crawled": crawled_count}
+```
+
+---
+
+### 4. Frontend Components & Integration
+
+#### [NEW] [CrawlForm.tsx](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/frontend/features/scraper/components/CrawlForm.tsx)
+Tab khusus di `/dashboard/scraper` yang menyediakan input URL, kedalaman (depth), filter jalur (path filter), limit perayapan halaman, dan interval jeda, serta visualisasi kemajuan real-time.
+
+#### [NEW] [CrawlJobsList.tsx](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/frontend/features/scraper/components/CrawlJobsList.tsx)
+Tabel riwayat perayapan (`crawl_jobs`) dengan visualisasi sirkuler progres atau bar, detail halaman yang berhasil dirayap, dan logs perayapan yang interaktif.
+
+#### [MODIFY] [page.tsx](file:///c:/Users/ASUS/Desktop/python-next-boilerplate/frontend/app/dashboard/scraper/page.tsx)
+Membuka kunci (unlock) Tab **Crawl** dan menampilkan komponen `CrawlForm` serta `CrawlJobsList` secara terintegrasi dan premium.
+
+---
+
+## Verification Plan
+
+### Backend & API
+1. Jalankan test endpoint `POST /api/v1/crawler/crawl` dengan payload valid.
+2. Buka Swagger docs (`/docs`) untuk memvalidasi skema input/output.
+3. Jalankan unit test crawling dan verifikasi penyimpanan di database PostgreSQL.
+
+### Frontend & UI
+1. Buka dashboard pada bagian `/dashboard/scraper`.
+2. Klik tab **Crawl**, masukkan URL OPD (contoh: `cimahikota.go.id`), konfigurasi limit ke `10` halaman, klik "Start Crawling".
+3. Validasi progres perayapan berjalan real-time dan data tersimpan dengan benar.
+
+---
+
+## Open Questions
+
+> [!NOTE]
+> Apakah format hasil perayapan crawler (CrawledPage) hanya dikonversi ke **Markdown** murni saja, atau apakah kita juga perlu memecah otomatis isi per halaman hasil rayapan ke tabel `raw_feedbacks` untuk langsung diumpankan ke Analisis Sentimen (seperti tombol Ingest pada Scraper)?
