@@ -18,6 +18,8 @@ from app.core.exceptions import (
     ExternalServiceException,
     NotFoundException,
     ValidationException,
+    UnauthorizedException,
+    ForbiddenException,
 )
 
 from app.api.routers import (
@@ -106,6 +108,22 @@ async def external_service_handler(request: Request, exc: ExternalServiceExcepti
     )
 
 
+@app.exception_handler(UnauthorizedException)
+async def unauthorized_handler(request: Request, exc: UnauthorizedException):
+    return JSONResponse(
+        status_code=401,
+        content={"error": "Unauthorized", "message": exc.message},
+    )
+
+
+@app.exception_handler(ForbiddenException)
+async def forbidden_handler(request: Request, exc: ForbiddenException):
+    return JSONResponse(
+        status_code=403,
+        content={"error": "Forbidden", "message": exc.message},
+    )
+
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     return JSONResponse(
@@ -118,6 +136,8 @@ async def app_exception_handler(request: Request, exc: AppException):
 
 API_V1_PREFIX = "/api/v1"
 
+from app.api.routers import search_router, data_source_router
+
 app.include_router(feedback_router.router, prefix=API_V1_PREFIX)
 app.include_router(target_entity_router.router, prefix=API_V1_PREFIX)
 app.include_router(analytics_router.router, prefix=API_V1_PREFIX)
@@ -125,6 +145,8 @@ app.include_router(auth_router.router, prefix=API_V1_PREFIX)
 app.include_router(setting_router.router, prefix=API_V1_PREFIX)
 app.include_router(scraper_router.router, prefix=API_V1_PREFIX)
 app.include_router(crawler_router.router, prefix=API_V1_PREFIX)
+app.include_router(search_router.router, prefix=API_V1_PREFIX)
+app.include_router(data_source_router.router, prefix=API_V1_PREFIX)
 
 # ── Mount Inngest Serve ───────────────────────────────────────
 

@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, ExternalLink, Loader2, RefreshCcw } from "lucide-react";
+import { Clock, ExternalLink, Loader2, RefreshCcw, Eye } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { formatDateTime } from "@/utils/format";
 import Badge from "@/components/ui/Badge";
 import { fetchScrapeJobs } from "@/features/scraper/actions";
 import type { ScrapeJobListItem, ScrapeStatus } from "@/types";
+import ScrapeResultModal from "./ScrapeResultModal";
 
 function statusVariant(
   status: ScrapeStatus
@@ -28,6 +29,13 @@ export default function ScrapeJobsList() {
   const [jobs, setJobs] = useState<ScrapeJobListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenViewer = (jobId: string) => {
+    setSelectedJobId(jobId);
+    setIsModalOpen(true);
+  };
 
   const loadJobs = async () => {
     setLoading(true);
@@ -105,6 +113,9 @@ export default function ScrapeJobsList() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
                   Waktu
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-card-border">
@@ -152,12 +163,45 @@ export default function ScrapeJobsList() {
                   <td className="px-4 py-3 text-xs text-muted whitespace-nowrap">
                     {formatDateTime(job.created_at)}
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {job.status === "COMPLETED" ? (
+                      <button
+                        onClick={() => handleOpenViewer(job.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent/10 border border-accent/20 text-accent-light hover:bg-accent/20 hover:text-foreground transition-smooth cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Lihat Hasil
+                      </button>
+                    ) : job.status === "FAILED" ? (
+                      <button
+                        onClick={() => handleOpenViewer(job.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-negative/10 border border-negative/20 text-negative hover:bg-negative/20 hover:text-foreground transition-smooth cursor-pointer"
+                      >
+                        <Eye className="w-3 h-3" />
+                        Lihat Error
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted font-medium italic">
+                        Memproses...
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Scrape Result Modal */}
+      <ScrapeResultModal
+        jobId={selectedJobId}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedJobId(null);
+        }}
+      />
     </div>
   );
 }

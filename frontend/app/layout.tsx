@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="id" className={`${inter.variable} h-full antialiased dark`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
+        <Toaster position="top-right" toastOptions={{ className: 'dark:bg-card-bg dark:text-foreground dark:border dark:border-card-border' }} />
       </body>
     </html>
   );

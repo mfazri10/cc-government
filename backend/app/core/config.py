@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     # Google Gemini
     GEMINI_API_KEY: str = ""
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = "govmind-secret-key-super-secure-change-it-in-env-98213892"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+
     # Inngest
     INNGEST_EVENT_KEY: str = ""
     INNGEST_SIGNING_KEY: str = ""

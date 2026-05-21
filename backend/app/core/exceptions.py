@@ -76,3 +76,18 @@ class ValidationException(AppException):
 
     def __init__(self, message: str = "Data tidak valid."):
         super().__init__(message)
+
+
+# ── Authentication & Authorization ──────────────────────────────
+class UnauthorizedException(AppException):
+    """Token tidak valid, kedaluwarsa, atau tidak ditemukan."""
+
+    def __init__(self, message: str = "Autentikasi gagal. Silakan login kembali."):
+        super().__init__(message)
+
+
+class ForbiddenException(AppException):
+    """User tidak memiliki hak akses yang memadai."""
+
+    def __init__(self, message: str = "Anda tidak memiliki hak akses untuk operasi ini."):
+        super().__init__(message)

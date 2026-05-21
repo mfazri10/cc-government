@@ -13,17 +13,24 @@ import ScrapeJobsList from "@/features/scraper/components/ScrapeJobsList";
 import ScrapeStatsBar from "@/features/scraper/components/ScrapeStats";
 import CrawlForm from "@/features/scraper/components/CrawlForm";
 import CrawlJobsList from "@/features/scraper/components/CrawlJobsList";
+import SearchForm from "@/features/scraper/components/SearchForm";
+import SearchResultsList from "@/features/scraper/components/SearchResultsList";
 import { cn } from "@/utils/cn";
+import type { SearchQueryResponse } from "@/types";
 
 const TABS = [
-  { id: "search", label: "Search", icon: Search, locked: true, phase: "Fase 3" },
-  { id: "scrape", label: "Scrape", icon: FileText, locked: false, phase: "" },
-  { id: "crawl", label: "Crawl", icon: Map, locked: false, phase: "" },
+  { id: "search", label: "Discover", icon: Search, locked: false, phase: "" },
+  { id: "scrape", label: "Scrape URL", icon: FileText, locked: false, phase: "" },
+  { id: "crawl", label: "Crawl Site", icon: Map, locked: false, phase: "" },
 ];
 
 export default function ScraperPage() {
-  const [activeTab, setActiveTab] = useState<"scrape" | "crawl">("scrape");
+  const [activeTab, setActiveTab] = useState<"search" | "scrape" | "crawl">("search");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Search state
+  const [searchResults, setSearchResults] = useState<SearchQueryResponse | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
 
   const handleCrawlJobCreated = () => {
     // Pemicu untuk memuat ulang daftar pekerjaan
@@ -39,10 +46,10 @@ export default function ScraperPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">
-            Scraping & Crawling Engine
+            Scraping, Crawling & Discover Engine
           </h1>
           <p className="text-sm text-muted mt-0.5">
-            Ekstrak konten web terstruktur atau rayap seluruh situs OPD untuk analisis sentimen
+            Eksplorasi isu publik global, ekstrak halaman spesifik, atau rayap situs web penuh
           </p>
         </div>
       </div>
@@ -73,7 +80,7 @@ export default function ScraperPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as "scrape" | "crawl")}
+              onClick={() => setActiveTab(tab.id as "search" | "scrape" | "crawl")}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-smooth cursor-pointer",
                 isTabActive
@@ -90,7 +97,12 @@ export default function ScraperPage() {
 
       {/* Tab Content */}
       <div className="space-y-6">
-        {activeTab === "scrape" ? (
+        {activeTab === "search" ? (
+          <>
+            <SearchForm onResults={setSearchResults} onLoadingChange={setIsSearchLoading} />
+            <SearchResultsList data={searchResults} isLoading={isSearchLoading} />
+          </>
+        ) : activeTab === "scrape" ? (
           <>
             <ScrapeForm />
             <ScrapeJobsList />

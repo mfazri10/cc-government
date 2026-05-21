@@ -9,6 +9,8 @@ import type {
   PaginatedResponse,
   CrawlJob,
   CrawledPage,
+  SearchQueryResponse,
+  SearchQueryResultItem,
 } from "@/types";
 
 interface SubmitScrapeParams {
@@ -119,3 +121,35 @@ export async function fetchCrawledPages(
   return apiGet<CrawledPage[]>(`/api/v1/crawler/jobs/${jobId}/pages`);
 }
 
+// ── Search Engine Discover ────────────────────────────────────
+
+/**
+ * Lakukan pencarian global (Discover) ke backend.
+ */
+export async function performSearch(
+  query: string,
+  sources: string[],
+  limit: number = 10
+): Promise<SearchQueryResponse> {
+  return apiPost<SearchQueryResponse>("/api/v1/scraper/search", {
+    query,
+    sources,
+    limit,
+  });
+}
+
+/**
+ * Ingest (Simpan) hasil pencarian terpilih ke pipeline sentimen.
+ */
+export async function ingestSearchResults(
+  items: SearchQueryResultItem[],
+  targetEntityId?: number
+): Promise<{ ingested_count: number; skipped_count: number; message: string }> {
+  return apiPost<{ ingested_count: number; skipped_count: number; message: string }>(
+    "/api/v1/scraper/search/ingest",
+    {
+      target_entity_id: targetEntityId || null,
+      items,
+    }
+  );
+}
