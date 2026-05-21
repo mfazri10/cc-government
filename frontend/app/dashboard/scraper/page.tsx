@@ -16,7 +16,6 @@ import CrawlJobsList from "@/features/scraper/components/CrawlJobsList";
 import SearchForm from "@/features/scraper/components/SearchForm";
 import SearchResultsList from "@/features/scraper/components/SearchResultsList";
 import { cn } from "@/utils/cn";
-import type { SearchQueryResponse } from "@/types";
 
 const TABS = [
   { id: "search", label: "Discover", icon: Search, locked: false, phase: "" },
@@ -26,22 +25,12 @@ const TABS = [
 
 export default function ScraperPage() {
   const [activeTab, setActiveTab] = useState<"search" | "scrape" | "crawl">("search");
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Search state
-  const [searchResults, setSearchResults] = useState<SearchQueryResponse | null>(null);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-
-  const handleCrawlJobCreated = () => {
-    // Pemicu untuk memuat ulang daftar pekerjaan
-    setRefreshTrigger((prev) => prev + 1);
-  };
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-lg shadow-accent/20">
+        <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-lg shadow-accent/20 border border-white/5">
           <Globe className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -99,8 +88,8 @@ export default function ScraperPage() {
       <div className="space-y-6">
         {activeTab === "search" ? (
           <>
-            <SearchForm onResults={setSearchResults} onLoadingChange={setIsSearchLoading} />
-            <SearchResultsList data={searchResults} isLoading={isSearchLoading} />
+            <SearchForm />
+            <SearchResultsList />
           </>
         ) : activeTab === "scrape" ? (
           <>
@@ -109,8 +98,8 @@ export default function ScraperPage() {
           </>
         ) : (
           <>
-            <CrawlForm onJobCreated={handleCrawlJobCreated} />
-            <CrawlJobsList key={refreshTrigger} />
+            <CrawlForm />
+            <CrawlJobsList />
           </>
         )}
       </div>

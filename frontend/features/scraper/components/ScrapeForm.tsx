@@ -16,10 +16,14 @@ import {
   Image,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { useScraperStore } from "@/store/scraperStore";
 import { submitScrapeJob } from "@/features/scraper/actions";
 import type { ScrapeJob } from "@/types";
 import ScrapeResultViewer from "./ScrapeResultViewer";
 import GetCodeModal from "./GetCodeModal";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface FormatOption {
   id: string;
@@ -86,6 +90,8 @@ export default function ScrapeForm() {
   const [error, setError] = useState<string | null>(null);
   const [showGetCode, setShowGetCode] = useState(false);
 
+  const { loadScrapeJobs, loadScrapeStats } = useScraperStore();
+
   const toggleFormat = (formatId: string) => {
     setSelectedFormats((prev) =>
       prev.includes(formatId)
@@ -108,6 +114,9 @@ export default function ScrapeForm() {
         formats: selectedFormats.filter((f) => f !== "screenshot"),
       });
       setResult(job);
+      // Reload stats and jobs in the store
+      loadScrapeJobs(1, 20);
+      loadScrapeStats();
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Gagal menjalankan scraping."
@@ -120,8 +129,8 @@ export default function ScrapeForm() {
   return (
     <div className="space-y-6">
       {/* Scrape Form Card */}
-      <div className="glass-card overflow-hidden">
-        <div className="p-5 border-b border-card-border bg-card-hover/20">
+      <Card glass className="overflow-hidden">
+        <CardHeader className="p-5 border-b border-card-border bg-card-hover/20">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
               <Globe className="w-4 h-4 text-accent-light" />
@@ -135,118 +144,121 @@ export default function ScrapeForm() {
               </p>
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
-          {/* URL Input */}
-          <div className="space-y-2">
-            <label
-              htmlFor="scrape-url"
-              className="text-xs font-semibold text-foreground uppercase tracking-wider"
-            >
-              Target URL
-            </label>
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm font-mono">
-                  https://
-                </span>
-                <input
-                  id="scrape-url"
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="example.com/page"
-                  className="w-full pl-[85px] pr-4 py-3 rounded-xl bg-card/60 border border-card-border text-foreground placeholder-muted/50 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-smooth font-mono"
-                  required
-                />
+        <CardContent className="p-5 pt-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* URL Input */}
+            <div className="space-y-2">
+              <label
+                htmlFor="scrape-url"
+                className="text-xs font-semibold text-foreground uppercase tracking-wider"
+              >
+                Target URL
+              </label>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted text-sm font-mono">
+                    https://
+                  </span>
+                  <Input
+                    id="scrape-url"
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="example.com/page"
+                    className="pl-[85px] pr-4 py-3 h-auto rounded-xl bg-card/60 font-mono"
+                    required
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={
+                    isLoading || !url.trim() || selectedFormats.length === 0
+                  }
+                  className="flex items-center gap-2 px-6 py-3 h-auto rounded-xl gradient-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-smooth shadow-lg shadow-accent/20 disabled:shadow-none cursor-pointer whitespace-nowrap border-transparent"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Scraping...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Start Scraping
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setShowGetCode(true)}
+                  variant="outline"
+                  className="flex items-center gap-2 px-4 py-3 h-auto rounded-xl cursor-pointer whitespace-nowrap"
+                >
+                  <Code className="w-4 h-4" />
+                  Get Code
+                </Button>
               </div>
-              <button
-                type="submit"
-                disabled={
-                  isLoading || !url.trim() || selectedFormats.length === 0
-                }
-                className="flex items-center gap-2 px-6 py-3 rounded-xl gradient-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-smooth shadow-lg shadow-accent/20 disabled:shadow-none cursor-pointer whitespace-nowrap"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Scraping...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" />
-                    Start Scraping
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowGetCode(true)}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl border border-card-border text-muted text-sm font-medium hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer whitespace-nowrap"
-              >
-                <Code className="w-4 h-4" />
-                Get Code
-              </button>
             </div>
-          </div>
 
-          {/* Format Selector Grid */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
-              Select Formats
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-              {FORMAT_OPTIONS.map((format) => {
-                const isSelected = selectedFormats.includes(format.id);
-                const Icon = format.icon;
+            {/* Format Selector Grid */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                Select Formats
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                {FORMAT_OPTIONS.map((format) => {
+                  const isSelected = selectedFormats.includes(format.id);
+                  const Icon = format.icon;
 
-                return (
-                  <button
-                    key={format.id}
-                    type="button"
-                    disabled={format.locked}
-                    onClick={() => !format.locked && toggleFormat(format.id)}
-                    className={cn(
-                      "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-smooth cursor-pointer",
-                      format.locked
-                        ? "border-card-border/50 bg-card/30 opacity-50 cursor-not-allowed"
-                        : isSelected
-                          ? "border-accent/50 bg-accent/10 shadow-lg shadow-accent/10"
-                          : "border-card-border bg-card/40 hover:border-card-border hover:bg-card-hover"
-                    )}
-                  >
-                    {format.locked && (
-                      <Lock className="absolute top-2 right-2 w-3 h-3 text-muted/50" />
-                    )}
-                    <div
+                  return (
+                    <button
+                      key={format.id}
+                      type="button"
+                      disabled={format.locked}
+                      onClick={() => !format.locked && toggleFormat(format.id)}
                       className={cn(
-                        "w-9 h-9 rounded-lg flex items-center justify-center transition-smooth",
-                        isSelected
-                          ? "bg-accent/20 text-accent-light"
-                          : "bg-card-hover text-muted"
+                        "relative flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-smooth cursor-pointer",
+                        format.locked
+                          ? "border-card-border/50 bg-card/30 opacity-50 cursor-not-allowed"
+                          : isSelected
+                            ? "border-accent/50 bg-accent/10 shadow-lg shadow-accent/10"
+                            : "border-card-border bg-card/40 hover:border-card-border hover:bg-card-hover"
                       )}
                     >
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <span
-                      className={cn(
-                        "text-[11px] font-semibold",
-                        isSelected ? "text-accent-light" : "text-foreground"
+                      {format.locked && (
+                        <Lock className="absolute top-2 right-2 w-3 h-3 text-muted/50" />
                       )}
-                    >
-                      {format.label}
-                    </span>
-                    <span className="text-[9px] text-muted leading-tight">
-                      {format.description}
-                    </span>
-                  </button>
-                );
-              })}
+                      <div
+                        className={cn(
+                          "w-9 h-9 rounded-lg flex items-center justify-center transition-smooth",
+                          isSelected
+                            ? "bg-accent/20 text-accent-light"
+                            : "bg-card-hover text-muted"
+                        )}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span
+                        className={cn(
+                          "text-[11px] font-semibold",
+                          isSelected ? "text-accent-light" : "text-foreground"
+                        )}
+                      >
+                        {format.label}
+                      </span>
+                      <span className="text-[9px] text-muted leading-tight">
+                        {format.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Status Banners */}
       {error && (

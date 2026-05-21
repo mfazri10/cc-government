@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # Google Gemini
     GEMINI_API_KEY: str = ""
 
+    # Google Serper API
+    SERPER_API_KEY: str = ""
+
     # JWT Authentication
     JWT_SECRET_KEY: str = "govmind-secret-key-super-secure-change-it-in-env-98213892"
     JWT_ALGORITHM: str = "HS256"

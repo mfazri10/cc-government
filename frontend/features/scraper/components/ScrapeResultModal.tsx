@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Loader2, AlertCircle } from "lucide-react";
-import { cn } from "@/utils/cn";
+import { Loader2, AlertCircle } from "lucide-react";
 import { fetchScrapeJob } from "@/features/scraper/actions";
 import type { ScrapeJob } from "@/types";
 import ScrapeResultViewer from "./ScrapeResultViewer";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface ScrapeResultModalProps {
   jobId: string | null;
@@ -50,50 +57,20 @@ export default function ScrapeResultModal({
     loadJobDetails();
   }, [jobId, isOpen]);
 
-  // Handle escape key to close
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-10">
-      {/* Backdrop with premium blur */}
-      <div
-        className="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-300"
-        onClick={onClose}
-      />
-
-      {/* Modal Container */}
-      <div className="relative w-full max-w-5xl max-h-[90vh] glass-card overflow-hidden shadow-2xl animate-fade-in flex flex-col border border-card-border/80">
-        
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b border-card-border bg-card/40">
-          <div className="flex flex-col min-w-0">
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              Detail Hasil Scraping
-            </h3>
-            {job && (
-              <span className="text-[11px] text-muted font-mono truncate max-w-md sm:max-w-xl mt-0.5">
-                {job.url}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer flex-shrink-0"
-            title="Tutup (Esc)"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <DialogHeader className="p-4 border-b border-card-border bg-card/40">
+          <DialogTitle className="text-sm font-bold flex items-center gap-2">
+            Detail Hasil Scraping
+          </DialogTitle>
+          {job && (
+            <DialogDescription className="text-[11px] font-mono truncate max-w-md sm:max-w-xl mt-0.5">
+              {job.url}
+            </DialogDescription>
+          )}
+        </DialogHeader>
 
         {/* Modal Content Scroll Area */}
         <div className="flex-1 overflow-y-auto min-h-0 bg-card/25 p-5">
@@ -111,7 +88,7 @@ export default function ScrapeResultModal({
                 Gagal Memuat Detail
               </h4>
               <p className="text-xs text-muted leading-relaxed mb-4">{error}</p>
-              <button
+              <Button
                 onClick={() => {
                   // Retry loading
                   if (jobId) {
@@ -123,10 +100,12 @@ export default function ScrapeResultModal({
                       .finally(() => setLoading(false));
                   }
                 }}
-                className="px-4 py-2 bg-card border border-card-border hover:bg-card-hover rounded-xl text-xs font-semibold text-foreground transition-smooth cursor-pointer"
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
               >
                 Coba Lagi
-              </button>
+              </Button>
             </div>
           ) : job ? (
             <div className="space-y-4">
@@ -181,7 +160,7 @@ export default function ScrapeResultModal({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

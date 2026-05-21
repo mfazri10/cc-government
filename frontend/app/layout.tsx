@@ -14,15 +14,19 @@ export const metadata: Metadata = {
   description: "City Intelligence Command Center — Monitoring sentimen publik real-time untuk pemerintah kota.",
 };
 
+import AuthProvider from "@/components/providers/AuthProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${inter.variable} h-full antialiased dark`}>
+    <html lang="id" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Toaster position="top-right" toastOptions={{ className: 'dark:bg-card-bg dark:text-foreground dark:border dark:border-card-border' }} />
       </body>
     </html>

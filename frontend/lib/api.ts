@@ -61,6 +61,9 @@ export const apiGet = <T>(endpoint: string, params?: Record<string, string | num
 export const apiPost = <T>(endpoint: string, body: unknown) =>
   api<T>(endpoint, { method: "POST", body: JSON.stringify(body) });
 
+export const apiPut = <T>(endpoint: string, body: unknown) =>
+  api<T>(endpoint, { method: "PUT", body: JSON.stringify(body) });
+
 export const apiPatch = <T>(endpoint: string, body: unknown) =>
   api<T>(endpoint, { method: "PATCH", body: JSON.stringify(body) });
 

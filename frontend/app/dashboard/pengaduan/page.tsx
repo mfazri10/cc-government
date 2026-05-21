@@ -1,5 +1,5 @@
 import FeedbackTable from "@/features/feedbacks/components/FeedbackTable";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import type { FeedbackWithAnalysis } from "@/types";
 
@@ -49,8 +49,8 @@ export default function PengaduanPage() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge variant="negative" size="md">{mockPengaduan.length} pengaduan aktif</Badge>
-        <Badge variant="warning" size="md">{mockPengaduan.filter(f => f.needs_attention).length} butuh perhatian</Badge>
+        <Badge variant="negative">{mockPengaduan.length} pengaduan aktif</Badge>
+        <Badge variant="warning">{mockPengaduan.filter(f => f.needs_attention).length} butuh perhatian</Badge>
       </div>
 
       <FeedbackTable feedbacks={mockPengaduan} />

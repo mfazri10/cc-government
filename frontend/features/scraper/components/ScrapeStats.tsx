@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Globe,
   CheckCircle2,
-  XCircle,
   Clock,
-  Zap,
   Database,
 } from "lucide-react";
-import { fetchScrapeStats } from "@/features/scraper/actions";
-import type { ScrapeStats } from "@/types";
+import { useScraperStore } from "@/store/scraperStore";
+import { Card } from "@/components/ui/card";
 
 interface StatCardData {
   label: string;
@@ -21,12 +19,10 @@ interface StatCardData {
 }
 
 export default function ScrapeStatsBar() {
-  const [stats, setStats] = useState<ScrapeStats | null>(null);
+  const { scrapeStats: stats, loadScrapeStats } = useScraperStore();
 
   useEffect(() => {
-    fetchScrapeStats()
-      .then(setStats)
-      .catch(() => {});
+    loadScrapeStats();
   }, []);
 
   if (!stats) return null;
@@ -67,9 +63,10 @@ export default function ScrapeStatsBar() {
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <div
+          <Card
             key={card.label}
-            className="glass-card p-4 flex items-center gap-3"
+            glass
+            className="p-4 flex items-center gap-3"
           >
             <div
               className={`w-10 h-10 rounded-xl ${card.bgColor} flex items-center justify-center flex-shrink-0`}
@@ -84,7 +81,7 @@ export default function ScrapeStatsBar() {
                 {card.label}
               </p>
             </div>
-          </div>
+          </Card>
         );
       })}
     </div>

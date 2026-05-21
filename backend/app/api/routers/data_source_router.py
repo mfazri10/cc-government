@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
-from app.core.models import User
-from app.schemas.data_source import DataSourceCreate, DataSourceUpdate, DataSourceResponse
+from app.core.auth_models import User
+from app.schemas.data_source import DataSourceCreate, DataSourceUpdate, DataSourceResponse, SourceResponse
 from app.services.data_source_service import data_source_service
 
 router = APIRouter(
@@ -52,3 +52,10 @@ async def trigger_scrape(
     current_user: User = Depends(get_current_user),
 ):
     return await data_source_service.trigger_manual_scrape(db, id)
+
+@router.get("/platforms", response_model=List[SourceResponse])
+async def get_platforms(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await data_source_service.get_all_platforms(db)

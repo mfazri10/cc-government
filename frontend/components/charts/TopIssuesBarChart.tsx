@@ -34,17 +34,17 @@ export default function TopIssuesBarChart({ data }: TopIssuesBarChartProps) {
               type="category"
               dataKey="topic"
               width={120}
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
               contentStyle={{
-                background: "#1e293b",
-                border: "1px solid #334155",
+                background: "var(--card)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "12px",
                 fontSize: "12px",
-                color: "#e4e8f1",
+                color: "var(--foreground)",
               }}
             />
             <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={18}>

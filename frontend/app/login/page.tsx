@@ -4,6 +4,10 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import { loginAction } from "@/features/auth/actions";
+import { useAuthStore } from "@/store/authStore";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,12 +15,14 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const loginSuccess = useAuthStore((s) => s.loginSuccess);
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.success && state.user) {
+      loginSuccess(state.user);
       router.push("/dashboard");
     }
-  }, [state, router]);
+  }, [state, router, loginSuccess]);
 
   const autofillAdmin = () => {
     setEmail("admin@govmind.local");
@@ -38,7 +44,7 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="glass-card p-8 shadow-2xl relative border border-card-border/80 backdrop-blur-xl">
+        <Card glass className="p-8 shadow-2xl relative border border-card-border/80 backdrop-blur-xl">
           {/* Top subtle glow bar */}
           <div className="absolute top-0 inset-x-0 h-[2px] gradient-accent rounded-t-2xl" />
 
@@ -62,14 +68,14 @@ export default function LoginPage() {
               <label className="text-xs font-semibold uppercase tracking-wider text-muted/80">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/60" />
-                <input 
+                <Input 
                   type="email" 
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@govmind.local"
                   required
-                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-background/40 border border-card-border text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition-smooth backdrop-blur-md"
+                  className="pl-11 pr-4 bg-background/40 backdrop-blur-md"
                 />
               </div>
             </div>
@@ -80,19 +86,19 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/60" />
-                <input 
+                <Input 
                   type={showPassword ? "text" : "password"} 
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-11 pr-11 py-3 rounded-xl bg-background/40 border border-card-border text-sm text-foreground placeholder:text-muted/40 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/40 transition-smooth backdrop-blur-md"
+                  className="pl-11 pr-11 bg-background/40 backdrop-blur-md"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted/60 hover:text-muted transition-smooth"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted/60 hover:text-muted transition-smooth cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -100,10 +106,10 @@ export default function LoginPage() {
             </div>
 
             <div className="pt-2">
-              <button 
+              <Button 
                 type="submit"
                 disabled={isPending}
-                className="w-full py-3 rounded-xl gradient-accent text-white text-sm font-semibold hover:opacity-95 transition-smooth shadow-lg shadow-accent/25 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full h-11 gradient-accent text-white text-sm font-semibold hover:opacity-95 transition-smooth shadow-lg shadow-accent/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer border-transparent"
               >
                 {isPending ? (
                   <>
@@ -113,7 +119,7 @@ export default function LoginPage() {
                 ) : (
                   "Masuk Sistem"
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
@@ -122,7 +128,7 @@ export default function LoginPage() {
             <button
               onClick={autofillAdmin}
               type="button"
-              className="text-xs text-accent hover:text-accent-hover font-medium underline transition-smooth"
+              className="text-xs text-accent hover:text-accent-hover font-medium underline transition-smooth cursor-pointer"
             >
               Autofill Super Admin Credentials (Demo)
             </button>
@@ -130,7 +136,7 @@ export default function LoginPage() {
               Keamanan Terjamin • Password terenkripsi penuh via Bcrypt
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

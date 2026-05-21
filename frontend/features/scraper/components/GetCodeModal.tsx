@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Code, Copy, Check, X } from "lucide-react";
+import { Code, Copy, Check } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface GetCodeModalProps {
   url: string;
@@ -66,8 +74,6 @@ export default function GetCodeModal({
   const [activeLang, setActiveLang] = useState<Lang>("curl");
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen) return null;
-
   const snippet = generateSnippet(activeLang, url, formats);
 
   const handleCopy = async () => {
@@ -77,35 +83,22 @@ export default function GetCodeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl mx-4 glass-card overflow-hidden shadow-2xl animate-fade-in">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl p-0 gap-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-card-border">
+        <DialogHeader className="p-4 border-b border-card-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
               <Code className="w-4 h-4 text-accent-light" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">Get Code</h3>
-              <p className="text-[10px] text-muted">
+              <DialogTitle className="text-sm font-bold">Get Code</DialogTitle>
+              <DialogDescription className="text-[10px]">
                 Snippet integrasi untuk API scraping
-              </p>
+              </DialogDescription>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Language Tabs */}
         <div className="flex border-b border-card-border">
@@ -132,9 +125,11 @@ export default function GetCodeModal({
           </pre>
 
           {/* Copy Button */}
-          <button
+          <Button
             onClick={handleCopy}
-            className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-card border border-card-border text-muted hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer"
+            variant="outline"
+            size="sm"
+            className="absolute top-6 right-6 gap-1.5 cursor-pointer"
           >
             {copied ? (
               <>
@@ -145,7 +140,7 @@ export default function GetCodeModal({
                 <Copy className="w-3 h-3" /> Copy
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         {/* Footer */}
@@ -155,7 +150,7 @@ export default function GetCodeModal({
             {" · "}Target: <code className="text-foreground font-mono">{url || "..."}</code>
           </p>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

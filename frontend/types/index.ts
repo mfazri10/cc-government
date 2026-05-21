@@ -233,3 +233,9 @@ export interface DataSource {
   target_entity_name: string;
 }
 
+export interface SourcePlatform {
+  id: number;
+  name: string;
+  type: string;
+}
+

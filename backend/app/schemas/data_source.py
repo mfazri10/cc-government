@@ -30,3 +30,12 @@ class DataSourceResponse(DataSourceBase):
 
     class Config:
         from_attributes = True
+
+
+class SourceResponse(BaseModel):
+    id: int
+    name: str
+    type: str
+
+    class Config:
+        from_attributes = True

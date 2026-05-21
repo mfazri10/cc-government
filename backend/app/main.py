@@ -36,6 +36,7 @@ from app.inngest_fns.client import inngest_client
 from app.inngest_fns.sentiment_functions import all_functions as sentiment_fns
 from app.inngest_fns.scraping_functions import scraping_functions as scraping_fns
 from app.inngest_fns.crawl_functions import crawl_functions as crawl_fns
+from app.inngest_fns.data_source_functions import all_functions as datasource_fns
 
 settings = get_settings()
 
@@ -153,7 +154,7 @@ app.include_router(data_source_router.router, prefix=API_V1_PREFIX)
 inngest.fast_api.serve(
     app,
     inngest_client,
-    [*sentiment_fns, *scraping_fns, *crawl_fns],
+    [*sentiment_fns, *scraping_fns, *crawl_fns, *datasource_fns],
 )
 
 

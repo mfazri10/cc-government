@@ -1,104 +1,104 @@
 "use client";
 
-import { useState } from "react";
 import { Search, Loader2 } from "lucide-react";
-import { performSearch } from "@/features/scraper/actions";
-import type { SearchQueryResponse } from "@/types";
+import { useScraperStore } from "@/store/scraperStore";
 import { toast } from "react-hot-toast";
-
-interface SearchFormProps {
-  onResults: (results: SearchQueryResponse) => void;
-  onLoadingChange: (isLoading: boolean) => void;
-}
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const AVAILABLE_SOURCES = ["Web Search", "Berita Lokal", "Twitter / X", "Instagram"];
 
-export default function SearchForm({ onResults, onLoadingChange }: SearchFormProps) {
-  const [query, setQuery] = useState("");
-  const [selectedSources, setSelectedSources] = useState<string[]>(["Web Search", "Berita Lokal"]);
-  const [isLoading, setIsLoading] = useState(false);
+export default function SearchForm() {
+  const {
+    searchQuery,
+    searchSources,
+    isSearchLoading,
+    setSearchQuery,
+    setSearchSources,
+    executeSearch,
+  } = useScraperStore();
 
   const toggleSource = (source: string) => {
-    setSelectedSources((prev) =>
-      prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
-    );
+    if (searchSources.includes(source)) {
+      setSearchSources(searchSources.filter((s) => s !== source));
+    } else {
+      setSearchSources([...searchSources, source]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) {
+    if (!searchQuery.trim()) {
       toast.error("Masukkan kata kunci pencarian");
       return;
     }
-    if (selectedSources.length === 0) {
+    if (searchSources.length === 0) {
       toast.error("Pilih minimal satu sumber pencarian");
       return;
     }
 
-    setIsLoading(true);
-    onLoadingChange(true);
-    
     try {
-      const response = await performSearch(query, selectedSources, 15);
-      onResults(response);
-      toast.success(`Ditemukan ${response.results.length} hasil pencarian`);
+      await executeSearch(searchQuery, searchSources, 15);
+      toast.success("Pencarian selesai dilakukan");
     } catch (error: any) {
       toast.error(error.message || "Gagal melakukan pencarian");
-    } finally {
-      setIsLoading(false);
-      onLoadingChange(false);
     }
   };
 
   return (
-    <div className="bg-card-bg border border-card-border rounded-xl p-6 shadow-sm mb-6">
+    <Card glass className="p-6 mb-6">
       <h2 className="text-xl font-bold mb-4">Discover & Pencarian Global</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Kata Kunci (Query)</label>
+          <label className="block text-sm font-semibold mb-1 text-muted">Kata Kunci (Query)</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-muted" />
             </div>
-            <input
+            <Input
               type="text"
-              className="w-full bg-body-bg border border-card-border rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+              className="pl-10 pr-4 bg-background/40"
               placeholder="Contoh: banjir cimahi, perbaikan jalan raya"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              disabled={isLoading}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearchLoading}
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Sumber Pencarian (Target)</label>
+          <label className="block text-sm font-semibold mb-2 text-muted">Sumber Pencarian (Target)</label>
           <div className="flex flex-wrap gap-2">
-            {AVAILABLE_SOURCES.map((source) => (
-              <button
-                key={source}
-                type="button"
-                onClick={() => toggleSource(source)}
-                disabled={isLoading}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
-                  selectedSources.includes(source)
-                    ? "bg-primary-500/10 text-primary-500 border-primary-500"
-                    : "bg-body-bg text-gray-400 border-card-border hover:border-gray-500 hover:text-gray-300"
-                }`}
-              >
-                {source}
-              </button>
-            ))}
+            {AVAILABLE_SOURCES.map((source) => {
+              const isSelected = searchSources.includes(source);
+              return (
+                <Button
+                  key={source}
+                  type="button"
+                  onClick={() => toggleSource(source)}
+                  disabled={isSearchLoading}
+                  variant={isSelected ? "default" : "outline"}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-smooth border cursor-pointer ${
+                    isSelected
+                      ? "bg-primary/10 text-primary border-primary hover:bg-primary/20"
+                      : "bg-card text-muted border-card-border hover:border-primary/40 hover:text-primary"
+                  }`}
+                >
+                  {source}
+                </Button>
+              );
+            })}
           </div>
         </div>
 
         <div className="flex justify-end pt-2">
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-70"
+            disabled={isSearchLoading}
+            className="flex items-center gap-2 px-6 py-3 gradient-accent text-white rounded-lg font-semibold hover:opacity-90 cursor-pointer border-transparent"
           >
-            {isLoading ? (
+            {isSearchLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 Mencari...
@@ -109,9 +109,9 @@ export default function SearchForm({ onResults, onLoadingChange }: SearchFormPro
                 Cari Sekarang
               </>
             )}
-          </button>
+          </Button>
         </div>
       </form>
-    </div>
+    </Card>
   );
 }

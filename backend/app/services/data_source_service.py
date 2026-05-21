@@ -102,12 +102,81 @@ class DataSourceService:
         if not ds:
             raise NotFoundException("DataSource", str(id))
             
-        from datetime import datetime
-        ds.last_scraped_at = datetime.utcnow()
-        await db.commit()
+        from app.inngest_fns.client import inngest_client
+        import inngest
         
-        # TODO: Trigger real scrape job queue using Inngest or Scraper service
+        # Trigger Inngest event asinkron
+        await inngest_client.send(
+            inngest.Event(
+                name="datasource/sync.requested",
+                data={"datasource_id": ds.id},
+            )
+        )
         
         return {"message": "Scrape triggered successfully", "status": ds.status}
+
+    async def execute_sync_flow(self, db: AsyncSession, id: int) -> dict:
+        """
+        Melakukan crawling dan ingesti data source secara asinkron (dipanggil oleh Inngest worker).
+        """
+        result = await db.execute(select(DataSource).where(DataSource.id == id))
+        ds = result.scalar_one_or_none()
+        if not ds:
+            raise NotFoundException("DataSource", str(id))
+
+        try:
+            # 1. Buat scrape job baru via scraper_service
+            from app.schemas.scraper import ScrapeRequest
+            from app.services.scraper_service import scraper_service
+            from app.services.ingest_service import ingest_service
+            from app.schemas.ingest import IngestFromScrapeRequest
+
+            scrape_req = ScrapeRequest(
+                url=ds.url,
+                formats=["markdown"]
+            )
+            
+            # Buat job dengan status PENDING
+            job = await scraper_service.create_job(db, scrape_req)
+            
+            # Jalankan scraping (mengunduh HTML, mengkonversi ke markdown)
+            job = await scraper_service.process_scrape(db, job.id)
+
+            if job.status == "FAILED":
+                ds.status = "error"
+                await db.commit()
+                return {"status": "failed", "error": job.error_message}
+
+            # 2. Ingest ulasan/komentar mentah ke raw_feedbacks
+            ingest_req = IngestFromScrapeRequest(
+                job_id=job.id,
+                source_id=ds.source_id,
+                target_entity_id=ds.target_entity_id,
+                auto_analyze=True
+            )
+            
+            ingest_result = await ingest_service.ingest_from_scrape(db, ingest_req)
+            
+            # 3. Update status sukses & last_scraped_at
+            from datetime import datetime, timezone
+            ds.status = "active"
+            ds.last_scraped_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            return {
+                "status": "success",
+                "feedbacks_created": ingest_result.feedbacks_created,
+                "feedbacks_skipped": ingest_result.feedbacks_skipped
+            }
+
+        except Exception as e:
+            ds.status = "error"
+            await db.commit()
+            return {"status": "failed", "error": str(e)}
+
+    async def get_all_platforms(self, db: AsyncSession) -> list[Source]:
+        """Mengambil semua platform/sumber data (sources) yang tersedia."""
+        result = await db.execute(select(Source).order_by(Source.name.asc()))
+        return list(result.scalars().all())
 
 data_source_service = DataSourceService()

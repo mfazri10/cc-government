@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.schemas.search import SearchQueryRequest, SearchQueryResponse, SearchIngestRequest
 from app.services.search_service import search_service
-from app.core.models import User
+from app.core.auth_models import User
 
 router = APIRouter(
     prefix="/scraper/search",
@@ -15,12 +15,13 @@ router = APIRouter(
 @router.post("", response_model=SearchQueryResponse)
 async def perform_search(
     request: SearchQueryRequest,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Melakukan pencarian berdasarkan keyword (Discover).
     """
-    results = await search_service.execute_search(request)
+    results = await search_service.execute_search(db, request)
     return SearchQueryResponse(query=request.query, results=results)
 
 @router.post("/ingest")

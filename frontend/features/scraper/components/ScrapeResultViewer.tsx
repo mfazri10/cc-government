@@ -18,7 +18,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { formatDateTime } from "@/utils/format";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { ScrapeJob } from "@/types";
 
 type TabId = "markdown" | "links" | "json" | "summary" | "html" | "images" | "metadata";
@@ -103,13 +105,13 @@ export default function ScrapeResultViewer({ job }: ScrapeResultViewerProps) {
   };
 
   return (
-    <div className="glass-card overflow-hidden">
+    <Card glass className="overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-card-border bg-card-hover/20">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
-            <Badge variant="positive">
-              <Check className="w-3 h-3 mr-1" />
+            <Badge variant="positive" className="gap-1">
+              <Check className="w-3 h-3" />
               Completed
             </Badge>
             <span className="text-xs text-muted font-mono truncate max-w-md">
@@ -123,9 +125,11 @@ export default function ScrapeResultViewer({ job }: ScrapeResultViewerProps) {
                 {job.result_metadata.title.length > 40 ? "..." : ""}
               </span>
             )}
-            <button
+            <Button
               onClick={() => handleCopy(getCopyContent())}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-card border border-card-border text-muted hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 cursor-pointer"
             >
               {copied ? (
                 <>
@@ -138,7 +142,7 @@ export default function ScrapeResultViewer({ job }: ScrapeResultViewerProps) {
                   Copy
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -320,6 +324,6 @@ export default function ScrapeResultViewer({ job }: ScrapeResultViewerProps) {
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

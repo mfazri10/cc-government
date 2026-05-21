@@ -1,5 +1,5 @@
 import { BellRing, Send, AlertTriangle } from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/utils/format";
 
 const mockAlertLogs = [

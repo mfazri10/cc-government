@@ -2,35 +2,33 @@
 
 import { useState } from "react";
 import { CheckSquare, Square, DownloadCloud, Loader2, ExternalLink } from "lucide-react";
-import type { SearchQueryResponse, SearchQueryResultItem } from "@/types";
+import { useScraperStore } from "@/store/scraperStore";
 import { ingestSearchResults } from "@/features/scraper/actions";
 import { toast } from "react-hot-toast";
 import { formatDateTime } from "@/utils/format";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-interface SearchResultsListProps {
-  data: SearchQueryResponse | null;
-  isLoading: boolean;
-}
-
-export default function SearchResultsList({ data, isLoading }: SearchResultsListProps) {
+export default function SearchResultsList() {
+  const { searchResults: data, isSearchLoading: isLoading } = useScraperStore();
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [isIngesting, setIsIngesting] = useState(false);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 bg-card-bg border border-card-border rounded-xl">
-        <Loader2 className="w-10 h-10 animate-spin text-primary-500 mb-4" />
-        <p className="text-gray-400">Mencari informasi di seluruh jaringan...</p>
-      </div>
+      <Card glass className="flex flex-col items-center justify-center py-16">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+        <p className="text-muted">Mencari informasi di seluruh jaringan...</p>
+      </Card>
     );
   }
 
   if (!data || data.results.length === 0) {
     if (!data) return null;
     return (
-      <div className="flex flex-col items-center justify-center py-16 bg-card-bg border border-card-border rounded-xl">
-        <p className="text-gray-400">Tidak ada hasil ditemukan untuk "{data.query}".</p>
-      </div>
+      <Card glass className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted">Tidak ada hasil ditemukan untuk "{data.query}".</p>
+      </Card>
     );
   }
 
@@ -59,10 +57,8 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
     setIsIngesting(true);
 
     try {
-      // Untuk MVP kita bisa buat targetEntityId undefined (atau tambah dropdown filter jika perlu)
       const res = await ingestSearchResults(itemsToIngest);
       toast.success(res.message || `Berhasil menyimpan data pencarian`);
-      // Reset seleksi setelah berhasil
       setSelectedUrls(new Set());
     } catch (error: any) {
       toast.error(error.message || "Gagal menyimpan hasil pencarian");
@@ -72,23 +68,24 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
   };
 
   return (
-    <div className="bg-card-bg border border-card-border rounded-xl shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-card-border flex items-center justify-between bg-body-bg/50">
+    <Card glass className="shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-card-border flex items-center justify-between bg-muted/20">
         <div>
           <h3 className="font-semibold">Hasil Pencarian: "{data.query}"</h3>
-          <p className="text-xs text-gray-400">{data.results.length} item ditemukan</p>
+          <p className="text-xs text-muted">{data.results.length} item ditemukan</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
             onClick={handleSelectAll}
-            className="text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
+            className="text-sm font-semibold text-muted hover:text-foreground transition-colors cursor-pointer"
           >
             {selectedUrls.size === data.results.length ? "Batal Pilih Semua" : "Pilih Semua"}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleIngest}
             disabled={isIngesting || selectedUrls.size === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-success-600 hover:bg-success-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-success hover:bg-success/80 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer border-transparent"
           >
             {isIngesting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -96,7 +93,7 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
               <DownloadCloud className="w-4 h-4" />
             )}
             Simpan & Ingest ({selectedUrls.size})
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -105,14 +102,14 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
           <div
             key={idx}
             className={`p-4 flex gap-4 transition-colors ${
-              selectedUrls.has(item.url) ? "bg-primary-500/5" : "hover:bg-body-bg"
+              selectedUrls.has(item.url) ? "bg-primary/5" : "hover:bg-card-hover/30"
             }`}
           >
             <div className="pt-1 cursor-pointer" onClick={() => toggleSelect(item.url)}>
               {selectedUrls.has(item.url) ? (
-                <CheckSquare className="w-5 h-5 text-primary-500" />
+                <CheckSquare className="w-5 h-5 text-primary" />
               ) : (
-                <Square className="w-5 h-5 text-gray-500" />
+                <Square className="w-5 h-5 text-muted" />
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -120,19 +117,19 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
                 href={item.url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary-400 font-medium hover:underline text-lg flex items-center gap-2"
+                className="text-primary font-semibold hover:underline text-lg flex items-center gap-2"
               >
                 {item.title}
-                <ExternalLink className="w-3 h-3 text-gray-500" />
+                <ExternalLink className="w-3 h-3 text-muted" />
               </a>
-              <p className="text-xs text-success-500 mt-1 mb-2 truncate">{item.url}</p>
-              <p className="text-sm text-gray-300 line-clamp-2">{item.snippet}</p>
+              <p className="text-xs text-positive-light mt-1 mb-2 truncate">{item.url}</p>
+              <p className="text-sm text-foreground/80 line-clamp-2">{item.snippet}</p>
               <div className="flex items-center gap-3 mt-3">
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-body-bg border border-card-border">
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-muted/50 border border-card-border">
                   {item.source}
                 </span>
                 {item.published_at && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted">
                     {formatDateTime(item.published_at)}
                   </span>
                 )}
@@ -141,6 +138,6 @@ export default function SearchResultsList({ data, isLoading }: SearchResultsList
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
