@@ -36,6 +36,7 @@ from app.api.routers import (
     setting_router,
     scraper_router,
     crawler_router,
+    export_router,
 )
 import inngest.fast_api
 from app.inngest_fns.client import inngest_client
@@ -156,6 +157,7 @@ app.include_router(crawler_router.router, prefix=API_V1_PREFIX)
 app.include_router(search_router.router, prefix=API_V1_PREFIX)
 app.include_router(data_source_router.router, prefix=API_V1_PREFIX)
 app.include_router(social_router.router, prefix=API_V1_PREFIX)
+app.include_router(export_router.router, prefix=API_V1_PREFIX)
 
 # ── Mount Inngest Serve ───────────────────────────────────────
 

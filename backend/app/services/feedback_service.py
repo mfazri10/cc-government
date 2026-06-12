@@ -248,5 +248,148 @@ class FeedbackService:
         return result.scalar() or 0
 
 
+    # ── Export Functions ────────────────────────────────────────
+
+    async def get_feedbacks_for_export(
+        self,
+        db: AsyncSession,
+        sentiment_filter: str | None = None,
+        entity_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> list[dict]:
+        """Ambil data feedback untuk export (tanpa pagination)."""
+        base_query = (
+            select(RawFeedback)
+            .outerjoin(AnalyzedFeedback)
+            .outerjoin(Source)
+            .outerjoin(TargetEntity)
+            .options(
+                joinedload(RawFeedback.analysis),
+                joinedload(RawFeedback.source),
+                joinedload(RawFeedback.target_entity),
+            )
+        )
+
+        conditions = []
+        if sentiment_filter:
+            conditions.append(AnalyzedFeedback.sentiment == sentiment_filter.upper())
+        if entity_id:
+            conditions.append(RawFeedback.target_entity_id == entity_id)
+        if start_date:
+            conditions.append(RawFeedback.scraped_at >= start_date)
+        if end_date:
+            conditions.append(RawFeedback.scraped_at <= end_date)
+
+        if conditions:
+            base_query = base_query.where(and_(*conditions))
+
+        result = await db.execute(
+            base_query.order_by(RawFeedback.scraped_at.desc())
+        )
+        rows = result.unique().scalars().all()
+
+        export_data = []
+        for fb in rows:
+            export_data.append({
+                "id": str(fb.id),
+                "content": fb.content,
+                "author_name": fb.author_name,
+                "url": fb.url,
+                "posted_at": fb.posted_at.isoformat() if fb.posted_at else None,
+                "scraped_at": fb.scraped_at.isoformat() if fb.scraped_at else None,
+                "source": fb.source.name if fb.source else None,
+                "target_entity": fb.target_entity.name if fb.target_entity else None,
+                "sentiment": fb.analysis.sentiment if fb.analysis else None,
+                "emotion": fb.analysis.emotion if fb.analysis else None,
+                "topics": ", ".join(fb.analysis.topics) if fb.analysis and fb.analysis.topics else None,
+                "needs_attention": fb.analysis.needs_attention if fb.analysis else False,
+            })
+
+        return export_data
+
+    async def export_to_csv(
+        self,
+        db: AsyncSession,
+        sentiment_filter: str | None = None,
+        entity_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> str:
+        """Export feedback data ke CSV string."""
+        import csv
+        import io
+
+        data = await self.get_feedbacks_for_export(
+            db, sentiment_filter, entity_id, start_date, end_date
+        )
+
+        if not data:
+            return ""
+
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
+
+        return output.getvalue()
+
+    async def export_to_excel(
+        self,
+        db: AsyncSession,
+        sentiment_filter: str | None = None,
+        entity_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> bytes:
+        """Export feedback data ke Excel (bytes)."""
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        import io
+
+        data = await self.get_feedbacks_for_export(
+            db, sentiment_filter, entity_id, start_date, end_date
+        )
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Feedback Export"
+
+        if not data:
+            return b""
+
+        # Header
+        headers = list(data[0].keys())
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+
+        # Data rows
+        for row_idx, row_data in enumerate(data, 2):
+            for col_idx, key in enumerate(headers, 1):
+                ws.cell(row=row_idx, column=col_idx, value=row_data[key])
+
+        # Auto-width columns
+        for col in ws.columns:
+            max_length = 0
+            column_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+        output = io.BytesIO()
+        wb.save(output)
+        return output.getvalue()
+
+
 # Singleton instance
 feedback_service = FeedbackService()
