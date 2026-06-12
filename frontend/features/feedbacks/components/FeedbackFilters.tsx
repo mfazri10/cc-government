@@ -13,6 +13,9 @@ export default function FeedbackFilters({ entities }: FeedbackFiltersProps) {
 
   const currentSentiment = searchParams.get("sentiment") || "";
   const currentEntityId = searchParams.get("entity_id") || "";
+  const currentSearch = searchParams.get("search") || "";
+  const currentStartDate = searchParams.get("start_date") || "";
+  const currentEndDate = searchParams.get("end_date") || "";
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -21,13 +24,22 @@ export default function FeedbackFilters({ entities }: FeedbackFiltersProps) {
     } else {
       params.delete(key);
     }
-    // Reset ke halaman 1 saat filter berubah
     params.delete("page");
     router.push(`?${params.toString()}`);
   };
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Cari feedback..."
+        value={currentSearch}
+        onChange={(e) => updateFilter("search", e.target.value)}
+        className="px-3 py-2 rounded-xl bg-card border border-card-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-smooth w-64"
+      />
+
+      {/* Sentiment Filter */}
       <select
         value={currentSentiment}
         onChange={(e) => updateFilter("sentiment", e.target.value)}
@@ -39,6 +51,7 @@ export default function FeedbackFilters({ entities }: FeedbackFiltersProps) {
         <option value="NEUTRAL">Netral</option>
       </select>
 
+      {/* Entity Filter */}
       <select
         value={currentEntityId}
         onChange={(e) => updateFilter("entity_id", e.target.value)}
@@ -51,6 +64,23 @@ export default function FeedbackFilters({ entities }: FeedbackFiltersProps) {
           </option>
         ))}
       </select>
+
+      {/* Date Range */}
+      <input
+        type="date"
+        value={currentStartDate}
+        onChange={(e) => updateFilter("start_date", e.target.value)}
+        className="px-3 py-2 rounded-xl bg-card border border-card-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-smooth"
+        title="Tanggal mulai"
+      />
+      <span className="text-muted text-sm">-</span>
+      <input
+        type="date"
+        value={currentEndDate}
+        onChange={(e) => updateFilter("end_date", e.target.value)}
+        className="px-3 py-2 rounded-xl bg-card border border-card-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-accent/50 transition-smooth"
+        title="Tanggal akhir"
+      />
     </div>
   );
 }

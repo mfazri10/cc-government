@@ -18,6 +18,8 @@ import {
   Settings,
   Globe,
   Share2,
+  Map,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -33,6 +35,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Feedback", href: "/dashboard/feedbacks", icon: MessageSquare },
   { name: "Pengaduan", href: "/dashboard/pengaduan", icon: AlertTriangle },
   { name: "Target Entity", href: "/dashboard/target-entities", icon: Building2 },
+  { name: "Peta Sentimen", href: "/dashboard/map", icon: Map },
+  { name: "Laporan", href: "/dashboard/reports", icon: FileText },
   { name: "Media Sosial", href: "/dashboard/social", icon: Share2 },
   { name: "Scraper", href: "/dashboard/scraper", icon: Globe },
   { name: "Data Sources", href: "/dashboard/sources", icon: Database },
