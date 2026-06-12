@@ -28,6 +28,13 @@ async def create_data_source(
 ):
     return await data_source_service.create(db, request)
 
+@router.get("/platforms", response_model=List[SourceResponse])
+async def get_platforms(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await data_source_service.get_all_platforms(db)
+
 @router.put("/{id}", response_model=DataSourceResponse)
 async def update_data_source(
     id: int,
@@ -52,10 +59,3 @@ async def trigger_scrape(
     current_user: User = Depends(get_current_user),
 ):
     return await data_source_service.trigger_manual_scrape(db, id)
-
-@router.get("/platforms", response_model=List[SourceResponse])
-async def get_platforms(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return await data_source_service.get_all_platforms(db)

@@ -17,6 +17,7 @@ import {
   BellRing,
   Settings,
   Globe,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Feedback", href: "/dashboard/feedbacks", icon: MessageSquare },
   { name: "Pengaduan", href: "/dashboard/pengaduan", icon: AlertTriangle },
   { name: "Target Entity", href: "/dashboard/target-entities", icon: Building2 },
+  { name: "Media Sosial", href: "/dashboard/social", icon: Share2 },
   { name: "Scraper", href: "/dashboard/scraper", icon: Globe },
   { name: "Data Sources", href: "/dashboard/sources", icon: Database },
   { name: "EWS / Alerts", href: "/dashboard/alerts", icon: BellRing },
