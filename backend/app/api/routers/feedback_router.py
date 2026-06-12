@@ -52,15 +52,23 @@ async def list_feedbacks(
     page_size: int = Query(20, ge=1, le=100),
     sentiment: str | None = Query(None, description="Filter: POSITIVE, NEGATIVE, NEUTRAL"),
     entity_id: int | None = Query(None, description="Filter by target entity ID"),
+    source_id: int | None = Query(None, description="Filter by source ID"),
+    search: str | None = Query(None, description="Search in feedback content"),
+    start_date: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: str | None = Query(None, description="End date (YYYY-MM-DD)"),
+    needs_attention: bool | None = Query(None, description="Filter by needs_attention flag"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Daftar feedback beserta hasil analisis (untuk tabel di dashboard).
-    Mendukung pagination dan filter.
+    Mendukung pagination dan filter lengkap.
     """
     items, total = await feedback_service.get_feedbacks_with_analysis(
         db, page=page, page_size=page_size,
         sentiment_filter=sentiment, entity_id=entity_id,
+        source_id=source_id, search=search,
+        start_date=start_date, end_date=end_date,
+        needs_attention=needs_attention,
     )
     total_pages = math.ceil(total / page_size) if total > 0 else 0
 

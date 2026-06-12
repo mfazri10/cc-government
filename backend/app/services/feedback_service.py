@@ -125,6 +125,11 @@ class FeedbackService:
         page_size: int = 20,
         sentiment_filter: str | None = None,
         entity_id: int | None = None,
+        source_id: int | None = None,
+        search: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        needs_attention: bool | None = None,
     ) -> tuple[list[FeedbackWithAnalysis], int]:
         """
         Query gabungan raw_feedback + analyzed_feedback.
@@ -148,6 +153,20 @@ class FeedbackService:
             conditions.append(AnalyzedFeedback.sentiment == sentiment_filter.upper())
         if entity_id:
             conditions.append(RawFeedback.target_entity_id == entity_id)
+        if source_id:
+            conditions.append(RawFeedback.source_id == source_id)
+        if search:
+            conditions.append(RawFeedback.content.ilike(f"%{search}%"))
+        if start_date:
+            from datetime import datetime
+            start_dt = datetime.fromisoformat(start_date)
+            conditions.append(RawFeedback.scraped_at >= start_dt)
+        if end_date:
+            from datetime import datetime
+            end_dt = datetime.fromisoformat(end_date)
+            conditions.append(RawFeedback.scraped_at <= end_dt)
+        if needs_attention is not None:
+            conditions.append(AnalyzedFeedback.needs_attention == needs_attention)
 
         if conditions:
             base_query = base_query.where(and_(*conditions))
