@@ -1,7 +1,4 @@
-/**
- * Base API client — fetch wrapper untuk FastAPI backend.
- * Digunakan di Server Actions (features/[feature]/actions.ts).
- */
+import { cookies } from "next/headers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -28,11 +25,21 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
     if (qs) url += `?${qs}`;
   }
 
+  // Dapatkan token dari cookie secara asinkron (Server Context)
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session-token")?.value;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((fetchOptions.headers as Record<string, string>) || {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...fetchOptions.headers,
-    },
+    headers,
     ...fetchOptions,
   });
 
@@ -53,6 +60,9 @@ export const apiGet = <T>(endpoint: string, params?: Record<string, string | num
 
 export const apiPost = <T>(endpoint: string, body: unknown) =>
   api<T>(endpoint, { method: "POST", body: JSON.stringify(body) });
+
+export const apiPut = <T>(endpoint: string, body: unknown) =>
+  api<T>(endpoint, { method: "PUT", body: JSON.stringify(body) });
 
 export const apiPatch = <T>(endpoint: string, body: unknown) =>
   api<T>(endpoint, { method: "PATCH", body: JSON.stringify(body) });

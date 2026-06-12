@@ -2,7 +2,7 @@
 
 import { cn } from "@/utils/cn";
 import { formatDateTime, truncate } from "@/utils/format";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import type { FeedbackWithAnalysis, Sentiment } from "@/types";
 

@@ -15,6 +15,8 @@ from app.core.models import Base
 import app.core.auth_models  # noqa: F401 — import agar Alembic mendeteksi tabel RBAC
 import app.core.scraper_models  # noqa: F401 — import agar Alembic mendeteksi tabel scrape_jobs
 import app.core.crawl_models  # noqa: F401 — import agar Alembic mendeteksi tabel crawl_jobs
+import app.core.social_models  # noqa: F401 — import agar Alembic mendeteksi tabel social_monitors, dst.
+
 
 # Alembic Config object
 config = context.config

@@ -54,18 +54,18 @@ export default function SentimentPieChart({ data }: SentimentPieChartProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                background: "#1e293b",
-                border: "1px solid #334155",
+                background: "var(--card)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "12px",
                 fontSize: "12px",
-                color: "#e4e8f1",
+                color: "var(--foreground)",
               }}
             />
             <Legend
               verticalAlign="bottom"
               iconType="circle"
               iconSize={8}
-              wrapperStyle={{ fontSize: "12px", color: "#94a3b8" }}
+              wrapperStyle={{ fontSize: "12px", color: "var(--muted-foreground)" }}
             />
           </PieChart>
         </ResponsiveContainer>

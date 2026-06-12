@@ -1,6 +1,6 @@
 import { Users } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
-import Badge from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { fetchUsers } from "@/features/auth/users-actions";
 
 export default async function UsersPage() {

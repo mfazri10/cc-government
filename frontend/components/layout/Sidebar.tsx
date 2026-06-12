@@ -17,6 +17,7 @@ import {
   BellRing,
   Settings,
   Globe,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: "Feedback", href: "/dashboard/feedbacks", icon: MessageSquare },
   { name: "Pengaduan", href: "/dashboard/pengaduan", icon: AlertTriangle },
   { name: "Target Entity", href: "/dashboard/target-entities", icon: Building2 },
+  { name: "Media Sosial", href: "/dashboard/social", icon: Share2 },
   { name: "Scraper", href: "/dashboard/scraper", icon: Globe },
   { name: "Data Sources", href: "/dashboard/sources", icon: Database },
   { name: "EWS / Alerts", href: "/dashboard/alerts", icon: BellRing },
@@ -64,7 +66,7 @@ export default function Sidebar() {
                 <span className="text-sm font-bold tracking-tight text-foreground">
                   GOVMIND
                 </span>
-                <p className="text-[10px] text-muted leading-none">Sentimen Warga</p>
+                <p className="text-[10px] text-muted-foreground leading-none">Sentimen Warga</p>
               </div>
             </Link>
           )}
@@ -89,20 +91,20 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-smooth",
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]",
                   isActive
-                    ? "bg-accent/15 text-accent-light"
-                    : "text-muted hover:text-foreground hover:bg-card-hover"
+                    ? "bg-accent/15 text-accent-light shadow-sm border border-accent/20"
+                    : "text-foreground/75 hover:text-primary hover:bg-accent/5"
                 )}
                 title={collapsed ? item.name : undefined}
               >
                 <item.icon
                   className={cn(
-                    "w-[18px] h-[18px] flex-shrink-0",
-                    isActive ? "text-accent-light" : ""
+                    "w-[18px] h-[18px] flex-shrink-0 transition-colors duration-200",
+                    isActive ? "text-accent-light animate-pulse" : "text-foreground/60 group-hover:text-primary"
                   )}
                 />
-                {!collapsed && <span>{item.name}</span>}
+                {!collapsed && <span className="transition-colors duration-200">{item.name}</span>}
               </Link>
             );
           })}
@@ -112,7 +114,7 @@ export default function Sidebar() {
         <div className="px-3 py-3 border-t border-card-border">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center w-full gap-2 px-3 py-2 rounded-xl text-sm text-muted hover:text-foreground hover:bg-card-hover transition-smooth"
+            className="flex items-center justify-center w-full gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-card-hover transition-smooth"
           >
             {collapsed ? (
               <MenuIcon className="w-4 h-4" />

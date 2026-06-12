@@ -4,6 +4,16 @@ import { useState } from "react";
 import { Database, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { ingestScrapeResults } from "@/features/scraper/actions";
 import type { IngestResult, TargetEntity } from "@/types";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface IngestButtonProps {
   jobId: string;
@@ -28,8 +38,8 @@ export default function IngestButton({
 }: IngestButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [sourceId, setSourceId] = useState<number>(sources[0]?.id || 0);
-  const [entityId, setEntityId] = useState<number | undefined>(undefined);
+  const [sourceId, setSourceId] = useState<string>(String(sources[0]?.id || 0));
+  const [entityId, setEntityId] = useState<string>("");
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [result, setResult] = useState<IngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,15 +47,15 @@ export default function IngestButton({
   const [ingestCount, setIngestCount] = useState(initialCount);
 
   const handleIngest = async () => {
-    if (!sourceId) return;
+    if (!sourceId || sourceId === "0") return;
     setIsLoading(true);
     setError(null);
 
     try {
       const res = await ingestScrapeResults(
         jobId,
-        sourceId,
-        entityId,
+        Number(sourceId),
+        entityId ? Number(entityId) : undefined,
         autoAnalyze
       );
       setResult(res);
@@ -63,10 +73,10 @@ export default function IngestButton({
   // Already ingested — show status
   if (isIngested && !isOpen) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-positive/10 border border-positive/20 text-xs text-positive font-medium">
+      <Badge variant="positive" className="gap-1.5">
         <CheckCircle2 className="w-3 h-3" />
         Ingested ({ingestCount} feedback)
-      </div>
+      </Badge>
     );
   }
 
@@ -74,18 +84,20 @@ export default function IngestButton({
     <div className="relative">
       {/* Trigger Button */}
       {!isOpen && (
-        <button
+        <Button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-info/10 border border-info/20 text-info hover:bg-info/20 transition-smooth cursor-pointer"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 bg-info/10 border-transparent text-info hover:bg-info/20 cursor-pointer font-medium"
         >
           <Database className="w-3 h-3" />
           Ingest to Pipeline
-        </button>
+        </Button>
       )}
 
       {/* Ingest Form */}
       {isOpen && !result && (
-        <div className="glass-card p-4 space-y-3 border border-info/20 min-w-[300px]">
+        <Card className="p-4 space-y-3 border-info/20 min-w-[300px]">
           <p className="text-xs font-semibold text-foreground">
             Ingest ke Pipeline Sentimen
           </p>
@@ -95,17 +107,18 @@ export default function IngestButton({
             <label className="text-[10px] text-muted uppercase tracking-wider font-medium">
               Source
             </label>
-            <select
-              value={sourceId}
-              onChange={(e) => setSourceId(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg bg-card border border-card-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-info/50"
-            >
-              {sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <Select value={sourceId} onValueChange={setSourceId}>
+              <SelectTrigger className="w-full text-sm h-9">
+                <SelectValue placeholder="Pilih source" />
+              </SelectTrigger>
+              <SelectContent>
+                {sources.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Entity Select */}
@@ -113,20 +126,19 @@ export default function IngestButton({
             <label className="text-[10px] text-muted uppercase tracking-wider font-medium">
               Target Entity (opsional)
             </label>
-            <select
-              value={entityId || ""}
-              onChange={(e) =>
-                setEntityId(e.target.value ? Number(e.target.value) : undefined)
-              }
-              className="w-full px-3 py-2 rounded-lg bg-card border border-card-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-info/50"
-            >
-              <option value="">— Tidak ada —</option>
-              {entities.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
+            <Select value={entityId} onValueChange={setEntityId}>
+              <SelectTrigger className="w-full text-sm h-9">
+                <SelectValue placeholder="— Tidak ada —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— Tidak ada —</SelectItem>
+                {entities.map((e) => (
+                  <SelectItem key={e.id} value={String(e.id)}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Auto-Analyze Toggle */}
@@ -152,10 +164,11 @@ export default function IngestButton({
 
           {/* Actions */}
           <div className="flex gap-2">
-            <button
+            <Button
               onClick={handleIngest}
-              disabled={isLoading || !sourceId}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg gradient-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-smooth cursor-pointer"
+              disabled={isLoading || !sourceId || sourceId === "0"}
+              className="flex-1 gap-2 gradient-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 cursor-pointer border-transparent"
+              size="sm"
             >
               {isLoading ? (
                 <>
@@ -166,20 +179,22 @@ export default function IngestButton({
                   <Database className="w-3 h-3" /> Ingest
                 </>
               )}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setIsOpen(false)}
-              className="px-4 py-2 rounded-lg border border-card-border text-xs text-muted hover:text-foreground hover:bg-card-hover transition-smooth cursor-pointer"
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
             >
               Batal
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Success Result */}
       {result && (
-        <div className="glass-card p-4 space-y-2 border border-positive/20 min-w-[280px]">
+        <Card className="p-4 space-y-2 border-positive/20 min-w-[280px]">
           <div className="flex items-center gap-2 text-positive text-sm font-semibold">
             <CheckCircle2 className="w-4 h-4" />
             Berhasil di-ingest!
@@ -203,7 +218,7 @@ export default function IngestButton({
               </p>
             )}
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

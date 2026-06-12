@@ -203,3 +203,39 @@ export interface CrawledPage {
   crawled_at: string;
 }
 
+// ── Search Engine ─────────────────────────────────────────────
+
+export interface SearchQueryResultItem {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+  published_at?: string | null;
+}
+
+export interface SearchQueryResponse {
+  query: string;
+  results: SearchQueryResultItem[];
+}
+
+// ── Data Sources ──────────────────────────────────────────────
+
+export interface DataSource {
+  id: number;
+  name: string;
+  source_id: number;
+  url: string;
+  target_entity_id: number;
+  status: string;
+  last_scraped_at: string | null;
+  created_at: string;
+  source_name: string;
+  target_entity_name: string;
+}
+
+export interface SourcePlatform {
+  id: number;
+  name: string;
+  type: string;
+}
+
