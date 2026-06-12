@@ -38,6 +38,7 @@ from app.api.routers import (
     crawler_router,
     export_router,
     dedup_router,
+    scheduler_router,
 )
 import inngest.fast_api
 from app.inngest_fns.client import inngest_client
@@ -160,6 +161,7 @@ app.include_router(data_source_router.router, prefix=API_V1_PREFIX)
 app.include_router(social_router.router, prefix=API_V1_PREFIX)
 app.include_router(export_router.router, prefix=API_V1_PREFIX)
 app.include_router(dedup_router.router, prefix=API_V1_PREFIX)
+app.include_router(scheduler_router.router, prefix=API_V1_PREFIX)
 
 # ── Mount Inngest Serve ───────────────────────────────────────
 

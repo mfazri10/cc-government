@@ -53,8 +53,62 @@ async def process_scrape_job(
     }
 
 
+# ── Scheduled Scraping (Cron) ─────────────────────────────────
+
+@inngest_client.create_function(
+    fn_id="scheduled-scrape",
+    trigger=inngest.TriggerEvent(event="scraping/scheduled"),
+    retries=1,
+)
+async def scheduled_scrape(
+    ctx: inngest.Context,
+    step: inngest.Step,
+):
+    """
+    Scheduled scraping: jalankan scraping untuk semua data source aktif.
+    Dipicu oleh cron atau manual trigger.
+    """
+    async def run_scheduled():
+        async with async_session_factory() as db:
+            from sqlalchemy import select
+            from app.core.models import DataSource
+            
+            # Ambil semua data source aktif
+            result = await db.execute(
+                select(DataSource).where(DataSource.status == "active")
+            )
+            sources = result.scalars().all()
+            
+            processed = 0
+            errors = []
+            
+            for source in sources:
+                try:
+                    from app.schemas.scraper import ScrapeRequest
+                    request = ScrapeRequest(
+                        url=source.url,
+                        selectors={"content": "body"},
+                        output_format="text",
+                    )
+                    await scraper_service.create_and_process_scrape(db, request)
+                    processed += 1
+                except Exception as e:
+                    errors.append({"source_id": source.id, "error": str(e)})
+            
+            return {
+                "total_sources": len(sources),
+                "processed": processed,
+                "errors": len(errors),
+                "error_details": errors[:5],  # Limit error details
+            }
+
+    result = await step.run("execute-scheduled-scrape", run_scheduled)
+    return result
+
+
 # ── Daftar semua fungsi untuk registrasi ───────────────────────
 
 scraping_functions = [
     process_scrape_job,
+    scheduled_scrape,
 ]
